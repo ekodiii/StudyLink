@@ -1,3 +1,4 @@
+import uuid as uuid_mod
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
@@ -60,11 +61,14 @@ async def decide_visibility(
 ):
     now = datetime.now(timezone.utc)
     for decision in req.decisions:
+        course_uid = uuid_mod.UUID(decision.course_id)
+        group_uid = uuid_mod.UUID(decision.group_id)
+
         # Update visibility
         result = await db.execute(
             select(CourseVisibility).where(
-                CourseVisibility.course_id == decision.course_id,
-                CourseVisibility.group_id == decision.group_id,
+                CourseVisibility.course_id == course_uid,
+                CourseVisibility.group_id == group_uid,
             )
         )
         cv = result.scalar_one_or_none()
@@ -76,8 +80,8 @@ async def decide_visibility(
         prompt_result = await db.execute(
             select(PendingVisibilityPrompt).where(
                 PendingVisibilityPrompt.user_id == user.id,
-                PendingVisibilityPrompt.course_id == decision.course_id,
-                PendingVisibilityPrompt.group_id == decision.group_id,
+                PendingVisibilityPrompt.course_id == course_uid,
+                PendingVisibilityPrompt.group_id == group_uid,
             )
         )
         prompt = prompt_result.scalar_one_or_none()

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+import jwt as pyjwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +15,7 @@ security_scheme = HTTPBearer()
 
 def create_access_token(user_id: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
-    return jwt.encode(
+    return pyjwt.encode(
         {"sub": user_id, "exp": expire, "type": "access"},
         settings.secret_key,
         algorithm=settings.algorithm,
@@ -24,7 +24,7 @@ def create_access_token(user_id: str) -> str:
 
 def create_refresh_token(user_id: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
-    return jwt.encode(
+    return pyjwt.encode(
         {"sub": user_id, "exp": expire, "type": "refresh", "jti": str(uuid.uuid4())},
         settings.secret_key,
         algorithm=settings.algorithm,
@@ -33,7 +33,7 @@ def create_refresh_token(user_id: str) -> str:
 
 def create_extension_token(user_id: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=settings.extension_token_expire_days)
-    return jwt.encode(
+    return pyjwt.encode(
         {"sub": user_id, "exp": expire, "type": "extension"},
         settings.secret_key,
         algorithm=settings.algorithm,
@@ -42,8 +42,8 @@ def create_extension_token(user_id: str) -> str:
 
 def decode_token(token: str) -> dict:
     try:
-        return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-    except JWTError:
+        return pyjwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    except pyjwt.PyJWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 

@@ -1,5 +1,9 @@
-from fastapi import FastAPI
+from pathlib import Path
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from .routers import auth, users, groups, sync, visibility, progress
 
@@ -20,7 +24,20 @@ app.include_router(sync.router)
 app.include_router(visibility.router)
 app.include_router(progress.router)
 
+# Serve frontend static files
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+
 
 @app.get("/health")
 async def health():
     return {"status": "ok", "app": "StudyLink"}
+
+
+@app.get("/")
+async def serve_index():
+    index = FRONTEND_DIR / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
+    return {"detail": "Frontend not found"}

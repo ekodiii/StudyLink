@@ -137,6 +137,11 @@ async def get_extension_token(user: User = Depends(get_current_user_dep)):
     return TokenResponse(access_token=create_extension_token(str(user.id)))
 
 
+@router.get("/config")
+async def auth_config():
+    return {"google_client_id": settings.google_client_id}
+
+
 @router.post("/logout")
 async def logout():
     # Client-side token deletion; stateless JWTs

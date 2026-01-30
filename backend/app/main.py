@@ -41,3 +41,11 @@ async def serve_index():
     if index.exists():
         return FileResponse(str(index))
     return {"detail": "Frontend not found"}
+
+
+@app.get("/privacy-policy")
+async def serve_privacy_policy():
+    policy = FRONTEND_DIR / "privacy-policy.html"
+    if policy.exists():
+        return FileResponse(str(policy), media_type="text/html")
+    return {"detail": "Privacy policy not found"}

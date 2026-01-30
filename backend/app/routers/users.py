@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..core.database import get_db
 from ..core.security import get_current_user
 from ..models.user import User
+from ..models.course import Course
 from ..schemas.user import UserResponse, UserUpdateRequest
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -45,6 +46,42 @@ async def update_me(
     await db.commit()
     await db.refresh(user)
     return UserResponse(id=str(user.id), username=user.username, discriminator=user.discriminator)
+
+
+@router.get("/me/courses")
+async def get_my_courses(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Course).where(Course.user_id == user.id).order_by(Course.name)
+    )
+    courses = result.scalars().all()
+    return [
+        {
+            "id": str(c.id),
+            "name": c.name,
+            "course_code": c.course_code,
+            "canvas_course_id": c.canvas_course_id,
+            "hidden": c.hidden,
+        }
+        for c in courses
+    ]
+
+
+@router.patch("/me/courses/{course_id}")
+async def update_my_course(
+    course_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    import uuid as uuid_mod
+    result = await db.execute(
+        select(Course).where(Course.id == uuid_mod.UUID(course_id), Course.user_id == user.id)
+    )
+    course = result.scalar_one_or_none()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    course.hidden = not course.hidden
+    await db.commit()
+    return {"id": str(course.id), "hidden": course.hidden}
 
 
 @router.get("/search")

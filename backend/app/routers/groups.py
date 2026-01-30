@@ -12,6 +12,9 @@ from ..models.user import User
 from ..models.group import Group
 from ..models.group_member import GroupMember
 from ..models.user_institution_link import UserInstitutionLink
+from ..models.course import Course
+from ..models.course_visibility import CourseVisibility
+from ..models.pending_visibility_prompt import PendingVisibilityPrompt
 from ..schemas.group import (
     GroupCreateRequest,
     GroupUpdateRequest,
@@ -49,6 +52,24 @@ async def _verify_leader(db: AsyncSession, group_id: uuid.UUID, user_id: uuid.UU
     return group
 
 
+async def _create_visibility_for_user_group(db: AsyncSession, user_id: uuid.UUID, group_id: uuid.UUID):
+    """Create visibility entries + pending prompts for all user's non-hidden courses in a group."""
+    courses_result = await db.execute(
+        select(Course).where(Course.user_id == user_id, Course.hidden == False)
+    )
+    for course in courses_result.scalars().all():
+        existing = await db.execute(
+            select(CourseVisibility).where(
+                CourseVisibility.course_id == course.id,
+                CourseVisibility.group_id == group_id,
+            )
+        )
+        if existing.scalar_one_or_none():
+            continue
+        db.add(CourseVisibility(course_id=course.id, group_id=group_id, visible=False))
+        db.add(PendingVisibilityPrompt(user_id=user_id, course_id=course.id, group_id=group_id))
+
+
 @router.post("", response_model=GroupResponse)
 async def create_group(
     req: GroupCreateRequest,
@@ -62,6 +83,10 @@ async def create_group(
 
     member = GroupMember(group_id=group.id, user_id=user.id)
     db.add(member)
+
+    # Auto-create visibility entries for all user's courses
+    await _create_visibility_for_user_group(db, user.id, group.id)
+
     await db.commit()
     await db.refresh(group)
 
@@ -209,6 +234,10 @@ async def join_group(req: JoinGroupRequest, user: User = Depends(get_current_use
 
     member = GroupMember(group_id=group.id, user_id=user.id)
     db.add(member)
+
+    # Auto-create visibility entries for all user's courses
+    await _create_visibility_for_user_group(db, user.id, group.id)
+
     await db.commit()
 
     cnt_result = await db.execute(select(func.count()).where(GroupMember.group_id == group.id))

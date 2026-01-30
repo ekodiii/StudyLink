@@ -149,7 +149,9 @@ async function showMain() {
 function switchTab(tab) {
     document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
     document.getElementById("tab-groups").classList.toggle("hidden", tab !== "groups");
+    document.getElementById("tab-courses").classList.toggle("hidden", tab !== "courses");
     document.getElementById("tab-visibility").classList.toggle("hidden", tab !== "visibility");
+    if (tab === "courses") loadCourses();
     if (tab === "visibility") loadVisibility();
 }
 
@@ -376,6 +378,48 @@ async function deleteGroup() {
     if (!confirm("Delete this group? This cannot be undone.")) return;
     await api(`/groups/${currentGroupId}`, { method: "DELETE" });
     showMain();
+}
+
+// ── Courses ─────────────────────────────────────────────────────────────────
+
+async function loadCourses() {
+    const resp = await api("/users/me/courses");
+    if (!resp.ok) return;
+    const courses = await resp.json();
+    const el = document.getElementById("courses-list");
+
+    if (!courses.length) {
+        el.innerHTML = `<div class="empty">No courses synced yet. Use the browser extension on Canvas to sync.</div>`;
+        return;
+    }
+
+    let html = "";
+    for (const c of courses) {
+        html += `
+            <div class="vis-row" style="${c.hidden ? 'opacity:0.5' : ''}">
+                <div>
+                    <div style="font-weight:500">${esc(c.name)}</div>
+                    <div style="font-size:12px;color:var(--text2)">${esc(c.course_code || '')}</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" ${c.hidden ? '' : 'checked'} onchange="toggleCourseHidden('${c.id}', this)">
+                    <span class="slider"></span>
+                </label>
+            </div>`;
+    }
+    el.innerHTML = html;
+}
+
+async function toggleCourseHidden(courseId, checkbox) {
+    const resp = await api(`/users/me/courses/${courseId}`, { method: "PATCH" });
+    if (!resp.ok) {
+        checkbox.checked = !checkbox.checked;
+        return;
+    }
+    const data = await resp.json();
+    // Update row opacity
+    const row = checkbox.closest(".vis-row");
+    row.style.opacity = data.hidden ? "0.5" : "1";
 }
 
 // ── Visibility ──────────────────────────────────────────────────────────────

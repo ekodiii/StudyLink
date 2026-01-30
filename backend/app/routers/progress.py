@@ -73,6 +73,7 @@ async def get_group_progress(
                 Course.user_id == member_user.id,
                 CourseVisibility.group_id == group_id,
                 CourseVisibility.visible.is_(True),
+                Course.hidden.is_(False),
             )
         )
         if course_filter:

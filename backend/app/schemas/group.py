@@ -8,7 +8,8 @@ class GroupCreateRequest(BaseModel):
 
 
 class GroupUpdateRequest(BaseModel):
-    name: str = Field(min_length=1, max_length=100)
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    assignment_view_enabled: bool | None = None
 
 
 class GroupResponse(BaseModel):
@@ -27,6 +28,7 @@ class GroupDetailResponse(BaseModel):
     id: str
     name: str
     invite_code: str
+    assignment_view_enabled: bool = True
     leader: "MemberBrief"
     members: list["MemberInfo"]
 

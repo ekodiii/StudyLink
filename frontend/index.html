@@ -89,9 +89,12 @@
         <div class="progress-section">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                 <h3>Assignment Progress</h3>
-                <div class="view-toggle">
-                    <button class="active" onclick="setView('member',this)">By Member</button>
-                    <button onclick="setView('assignment',this)">By Assignment</button>
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div id="leader-assignment-toggle" class="hidden"></div>
+                    <div class="view-toggle">
+                        <button class="active" onclick="setView('member',this)">By Member</button>
+                        <button onclick="setView('assignment',this)">By Assignment</button>
+                    </div>
                 </div>
             </div>
             <div id="progress-area"></div>

@@ -150,6 +150,7 @@ async def get_group(group_id: uuid.UUID, user: User = Depends(get_current_user),
 
     return GroupDetailResponse(
         id=str(group.id), name=group.name, invite_code=group.invite_code,
+        assignment_view_enabled=group.assignment_view_enabled,
         leader=MemberBrief(id=str(leader.id), username=leader.username, discriminator=leader.discriminator),
         members=members,
     )
@@ -161,7 +162,10 @@ async def update_group(
     user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
     group = await _verify_leader(db, group_id, user.id)
-    group.name = req.name
+    if req.name is not None:
+        group.name = req.name
+    if req.assignment_view_enabled is not None:
+        group.assignment_view_enabled = req.assignment_view_enabled
     await db.commit()
     await db.refresh(group)
 

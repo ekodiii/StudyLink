@@ -304,6 +304,17 @@ header h1 span { color: var(--accent); }
 .tab:hover { color: var(--text); }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
+/* Collapsible sections */
+.collapsible-header { cursor: pointer; user-select: none; }
+.collapsible-header .chevron {
+    display: inline-block;
+    font-size: 10px;
+    transition: transform 0.2s;
+}
+.collapsible-header.collapsed .chevron { transform: rotate(-90deg); }
+.collapsible-content { overflow: hidden; }
+.collapsible-content.collapsed { display: none; }
+
 /* Course tree in progress */
 .course-block { margin-bottom: 16px; }
 .course-label {

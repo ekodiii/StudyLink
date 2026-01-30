@@ -3,6 +3,7 @@ let token = localStorage.getItem("token");
 let refreshToken = localStorage.getItem("refreshToken");
 let currentUser = null;
 let currentGroupId = null;
+let currentGroup = null;
 let currentProgress = null;
 let currentView = "member";
 
@@ -214,6 +215,7 @@ async function showGroupDetail(groupId) {
     const resp = await api(`/groups/${groupId}`);
     if (!resp.ok) { showMain(); return; }
     const group = await resp.json();
+    currentGroup = group;
 
     document.getElementById("detail-name").textContent = group.name;
     document.getElementById("detail-invite").textContent = group.invite_code;
@@ -234,13 +236,38 @@ async function showGroupDetail(groupId) {
         <div class="member-row">
             <div>
                 <span class="member-name">
-                    ${esc(m.username)}#${m.discriminator}
+                    ${esc(m.username)}
                     ${m.id === group.leader.id ? '<span class="leader-badge">Leader</span>' : ''}
                 </span>
             </div>
             <span class="member-sync">synced ${timeAgo(m.last_synced_at)}</span>
         </div>
     `).join("");
+
+    // Assignment view toggle (visibility + leader control)
+    const assignBtn = document.querySelector('.view-toggle button:last-child');
+    const leaderToggleEl = document.getElementById("leader-assignment-toggle");
+    if (group.assignment_view_enabled) {
+        assignBtn.classList.remove("hidden");
+    } else {
+        assignBtn.classList.add("hidden");
+        if (currentView === "assignment") {
+            currentView = "member";
+            document.querySelectorAll(".view-toggle button").forEach(b => b.classList.remove("active"));
+            document.querySelector(".view-toggle button:first-child").classList.add("active");
+        }
+    }
+    if (isLeader) {
+        leaderToggleEl.classList.remove("hidden");
+        leaderToggleEl.innerHTML = `
+            <label class="toggle" style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)">
+                <span>Assignment view</span>
+                <input type="checkbox" ${group.assignment_view_enabled ? 'checked' : ''} onchange="toggleAssignmentView(this.checked)">
+                <span class="slider"></span>
+            </label>`;
+    } else {
+        leaderToggleEl.classList.add("hidden");
+    }
 
     // Load progress
     await loadProgress(groupId);
@@ -260,6 +287,27 @@ function setView(view, btn) {
     renderProgress();
 }
 
+async function toggleAssignmentView(enabled) {
+    const resp = await api(`/groups/${currentGroupId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ assignment_view_enabled: enabled }),
+    });
+    if (!resp.ok) return;
+    currentGroup.assignment_view_enabled = enabled;
+    const assignBtn = document.querySelector('.view-toggle button:last-child');
+    if (enabled) {
+        assignBtn.classList.remove("hidden");
+    } else {
+        assignBtn.classList.add("hidden");
+        if (currentView === "assignment") {
+            currentView = "member";
+            document.querySelectorAll(".view-toggle button").forEach(b => b.classList.remove("active"));
+            document.querySelector(".view-toggle button:first-child").classList.add("active");
+            renderProgress();
+        }
+    }
+}
+
 function renderProgress() {
     const area = document.getElementById("progress-area");
     if (!currentProgress || !currentProgress.members.length) {
@@ -274,20 +322,29 @@ function renderProgress() {
     }
 }
 
+function toggleCollapsible(el) {
+    const content = el.nextElementSibling;
+    const isOpen = !content.classList.contains("collapsed");
+    content.classList.toggle("collapsed", isOpen);
+    el.classList.toggle("collapsed", isOpen);
+}
+
 function renderByMember(area) {
     let html = "";
     for (const member of currentProgress.members) {
         html += `<div class="card" style="cursor:default">`;
-        html += `<div class="card-header">
-            <span class="card-title">${esc(member.username)}#${member.discriminator}</span>
-            <span class="card-meta">synced ${timeAgo(member.last_synced_at)}</span>
+        html += `<div class="card-header collapsible-header" onclick="toggleCollapsible(this)">
+            <span class="card-title">${esc(member.username)}</span>
+            <span class="card-meta">synced ${timeAgo(member.last_synced_at)} <span class="chevron">&#9660;</span></span>
         </div>`;
+        html += `<div class="collapsible-content">`;
         if (!member.courses.length) {
             html += `<div class="card-meta" style="padding:8px 0">No visible courses</div>`;
         }
         for (const course of member.courses) {
             html += `<div class="course-block">`;
-            html += `<div class="course-label">${esc(course.course_code || course.name)}</div>`;
+            html += `<div class="course-label collapsible-header" onclick="toggleCollapsible(this)">${esc(course.course_code || course.name)} <span class="chevron">&#9660;</span></div>`;
+            html += `<div class="collapsible-content">`;
             for (const a of course.assignments) {
                 html += `<div class="assignment-row">
                     <span class="assignment-name">${esc(a.name)}</span>
@@ -299,54 +356,66 @@ function renderByMember(area) {
                 html += `<div class="assignment-row"><span class="card-meta">No assignments</span></div>`;
             }
             html += `</div>`;
+            html += `</div>`;
         }
+        html += `</div>`;
         html += `</div>`;
     }
     area.innerHTML = html;
 }
 
 function renderByAssignment(area) {
-    // Collect all assignments across members, grouped by course + assignment
-    const assignmentMap = new Map();
+    // Collect all assignments across members, grouped by course then assignment
+    const courseMap = new Map();
     for (const member of currentProgress.members) {
         for (const course of member.courses) {
+            const courseKey = course.course_code || course.name;
+            if (!courseMap.has(courseKey)) {
+                courseMap.set(courseKey, new Map());
+            }
+            const assignMap = courseMap.get(courseKey);
             for (const a of course.assignments) {
-                const key = `${course.course_code || course.name}||${a.name}||${a.due_at}`;
-                if (!assignmentMap.has(key)) {
-                    assignmentMap.set(key, {
-                        course: course.course_code || course.name,
+                const aKey = `${a.name}||${a.due_at}`;
+                if (!assignMap.has(aKey)) {
+                    assignMap.set(aKey, {
                         name: a.name,
                         due_at: a.due_at,
                         members: [],
                     });
                 }
-                assignmentMap.get(key).members.push({
+                assignMap.get(aKey).members.push({
                     username: member.username,
-                    discriminator: member.discriminator,
                     status: a.status,
                 });
             }
         }
     }
 
-    if (!assignmentMap.size) {
+    if (!courseMap.size) {
         area.innerHTML = `<div class="empty">No visible assignments</div>`;
         return;
     }
 
     let html = "";
-    for (const [, info] of assignmentMap) {
+    for (const [courseName, assignments] of courseMap) {
         html += `<div class="card" style="cursor:default">`;
-        html += `<div class="card-header">
-            <span class="card-title">${esc(info.course)} &mdash; ${esc(info.name)}</span>
-            <span class="card-meta">${formatDue(info.due_at)}</span>
+        html += `<div class="card-header collapsible-header" onclick="toggleCollapsible(this)">
+            <span class="card-title">${esc(courseName)}</span>
+            <span class="chevron">&#9660;</span>
         </div>`;
-        for (const m of info.members) {
-            html += `<div class="assignment-row">
-                <span class="assignment-name">${esc(m.username)}#${m.discriminator}</span>
-                ${statusHTML(m.status)}
-            </div>`;
+        html += `<div class="collapsible-content">`;
+        for (const [, info] of assignments) {
+            html += `<div class="course-block">`;
+            html += `<div class="course-label">${esc(info.name)} <span class="card-meta">${formatDue(info.due_at)}</span></div>`;
+            for (const m of info.members) {
+                html += `<div class="assignment-row">
+                    <span class="assignment-name">${esc(m.username)}</span>
+                    ${statusHTML(m.status)}
+                </div>`;
+            }
+            html += `</div>`;
         }
+        html += `</div>`;
         html += `</div>`;
     }
     area.innerHTML = html;
@@ -491,11 +560,16 @@ function showSettings() {
 async function saveUsername() {
     const name = document.getElementById("settings-username").value.trim();
     if (!name) return;
+    const oldDisc = currentUser.discriminator;
     const resp = await api("/users/me", { method: "PATCH", body: JSON.stringify({ username: name }) });
     if (!resp.ok) { alert("Failed to update username"); return; }
     currentUser = await resp.json();
     document.getElementById("settings-disc").textContent = `Discriminator: #${currentUser.discriminator}`;
-    alert("Username updated!");
+    if (currentUser.discriminator !== oldDisc) {
+        alert(`Username updated! Your discriminator changed to #${currentUser.discriminator} because someone already has that username with your old discriminator.`);
+    } else {
+        alert("Username updated!");
+    }
 }
 
 // ── Util ────────────────────────────────────────────────────────────────────

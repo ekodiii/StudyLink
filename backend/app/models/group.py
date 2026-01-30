@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, DateTime, ForeignKey, Uuid
+from sqlalchemy import String, DateTime, ForeignKey, Uuid, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..core.database import Base
@@ -14,5 +14,6 @@ class Group(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     invite_code: Mapped[str] = mapped_column(String(8), unique=True, nullable=False)
     leader_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    assignment_view_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

@@ -1,13 +1,13 @@
 """add hidden to courses
 
-Revision ID: 002
-Revises: 001
+Revision ID: 002_add_hidden
+Revises: 001_initial
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "002"
-down_revision = "001"
+revision = "002_add_hidden"
+down_revision = "001_initial"
 
 
 def upgrade():

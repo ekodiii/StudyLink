@@ -1,8 +1,9 @@
+const browserAPI = typeof browser !== "undefined" ? browser : chrome;
 const API_BASE = "https://api.studylink.app";
 
 document.addEventListener("DOMContentLoaded", async () => {
     const { authToken, username, discriminator, lastSync } =
-        await chrome.storage.local.get([
+        await browserAPI.storage.local.get([
             "authToken",
             "username",
             "discriminator",
@@ -36,7 +37,7 @@ document.getElementById("btn-sync").addEventListener("click", async () => {
     btn.textContent = "Syncing...";
     btn.disabled = true;
 
-    const result = await chrome.runtime.sendMessage({ type: "MANUAL_SYNC" });
+    const result = await browserAPI.runtime.sendMessage({ type: "MANUAL_SYNC" });
 
     if (result?.error) {
         btn.textContent = `Error: ${result.error}`;
@@ -44,7 +45,7 @@ document.getElementById("btn-sync").addEventListener("click", async () => {
         btn.textContent = "Recently synced";
     } else {
         btn.textContent = "Synced!";
-        const { lastSync } = await chrome.storage.local.get("lastSync");
+        const { lastSync } = await browserAPI.storage.local.get("lastSync");
         document.getElementById("display-sync").textContent =
             `Last sync: ${new Date(lastSync).toLocaleString()}`;
     }
@@ -56,7 +57,7 @@ document.getElementById("btn-sync").addEventListener("click", async () => {
 });
 
 document.getElementById("btn-signout").addEventListener("click", async () => {
-    await chrome.storage.local.clear();
+    await browserAPI.storage.local.clear();
     showLoggedOut();
 });
 
@@ -64,7 +65,7 @@ document.getElementById("btn-signout").addEventListener("click", async () => {
 document
     .getElementById("btn-google-signin")
     .addEventListener("click", () => {
-        chrome.tabs.create({
+        browserAPI.tabs.create({
             url: `${API_BASE}/auth/google/extension-flow`,
         });
     });
@@ -72,7 +73,7 @@ document
 document
     .getElementById("btn-apple-signin")
     .addEventListener("click", () => {
-        chrome.tabs.create({
+        browserAPI.tabs.create({
             url: `${API_BASE}/auth/apple/extension-flow`,
         });
     });

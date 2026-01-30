@@ -17,6 +17,9 @@ class Settings(BaseSettings):
 
     google_client_id: str = ""
     google_client_secret: str = ""
+    google_extension_redirect_uri: str = "https://api.studylink.app/auth/google/extension-callback"
+
+    api_base_url: str = "https://api.studylink.app"
 
     class Config:
         env_file = ".env"

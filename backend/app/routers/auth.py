@@ -1,9 +1,11 @@
 import random
 import string
+import urllib.parse
 
 import httpx
 import jwt as pyjwt
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -146,3 +148,149 @@ async def auth_config():
 async def logout():
     # Client-side token deletion; stateless JWTs
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Extension OAuth flows (server-side redirect for browser extensions)
+# ---------------------------------------------------------------------------
+
+@router.get("/google/extension-flow")
+async def google_extension_flow():
+    """Redirect the user to Google's OAuth consent screen."""
+    params = urllib.parse.urlencode({
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.google_extension_redirect_uri,
+        "response_type": "code",
+        "scope": "openid email",
+        "access_type": "offline",
+        "prompt": "consent",
+    })
+    return RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+
+
+@router.get("/google/extension-callback")
+async def google_extension_callback(
+    code: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Google redirects here with an authorization code.
+    Exchange it for tokens, look up / create the user, and render an HTML
+    page that the extension's background script can detect.
+    """
+    # Exchange auth code for tokens
+    async with httpx.AsyncClient() as client:
+        token_resp = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": settings.google_client_id,
+                "client_secret": settings.google_client_secret,
+                "redirect_uri": settings.google_extension_redirect_uri,
+                "grant_type": "authorization_code",
+            },
+        )
+        if token_resp.status_code != 200:
+            return HTMLResponse("<h1>Authentication failed</h1><p>Could not exchange code.</p>", status_code=400)
+        tokens = token_resp.json()
+
+    # Verify the ID token to get the user's Google sub
+    id_token = tokens.get("id_token", "")
+    try:
+        async with httpx.AsyncClient() as client:
+            info_resp = await client.get(
+                f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}"
+            )
+            if info_resp.status_code != 200:
+                raise ValueError("Bad id_token")
+            payload = info_resp.json()
+            google_sub = payload.get("sub")
+            if not google_sub:
+                raise ValueError("Missing sub")
+            if settings.google_client_id and payload.get("aud") != settings.google_client_id:
+                raise ValueError("Audience mismatch")
+    except ValueError:
+        return HTMLResponse("<h1>Authentication failed</h1><p>Invalid Google token.</p>", status_code=400)
+
+    user, _ = await _get_or_create_user(db, google_id=google_sub)
+    ext_token = create_extension_token(str(user.id))
+
+    # Render an HTML page with the token in the URL hash.
+    # The extension's background script detects this URL and extracts the data.
+    html = f"""<!DOCTYPE html>
+<html>
+<head><title>StudyLink — Signed In</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f9fafb">
+<div style="text-align:center">
+  <h1 style="color:#4f46e5">✓ Signed in to StudyLink</h1>
+  <p>You can close this tab and return to the extension.</p>
+</div>
+<script>
+  // Store auth data in the URL hash so the extension can read it
+  window.location.hash = "studylink-auth:" + JSON.stringify({{
+    authToken: "{ext_token}",
+    username: "{user.username}",
+    discriminator: "{user.discriminator}"
+  }});
+</script>
+</body>
+</html>"""
+    return HTMLResponse(html)
+
+
+@router.get("/apple/extension-flow")
+async def apple_extension_flow():
+    """Redirect the user to Apple's OAuth consent screen."""
+    params = urllib.parse.urlencode({
+        "client_id": settings.apple_client_id,
+        "redirect_uri": f"{settings.api_base_url}/auth/apple/extension-callback",
+        "response_type": "code id_token",
+        "scope": "name email",
+        "response_mode": "form_post",
+    })
+    return RedirectResponse(f"https://appleid.apple.com/auth/authorize?{params}")
+
+
+@router.post("/apple/extension-callback")
+async def apple_extension_callback(
+    code: str = "",
+    id_token: str = "",
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Apple redirects here via form_post with code and id_token.
+    Decode the id_token to get the Apple sub, create/find user,
+    and render the auth-handoff page.
+    """
+    if not id_token:
+        return HTMLResponse("<h1>Authentication failed</h1><p>No identity token received.</p>", status_code=400)
+
+    try:
+        payload = pyjwt.decode(id_token, options={"verify_signature": False})
+        apple_sub = payload.get("sub")
+        if not apple_sub:
+            raise ValueError("Missing sub")
+    except Exception:
+        return HTMLResponse("<h1>Authentication failed</h1><p>Invalid Apple token.</p>", status_code=400)
+
+    user, _ = await _get_or_create_user(db, apple_id=apple_sub)
+    ext_token = create_extension_token(str(user.id))
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head><title>StudyLink — Signed In</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f9fafb">
+<div style="text-align:center">
+  <h1 style="color:#4f46e5">✓ Signed in to StudyLink</h1>
+  <p>You can close this tab and return to the extension.</p>
+</div>
+<script>
+  window.location.hash = "studylink-auth:" + JSON.stringify({{
+    authToken: "{ext_token}",
+    username: "{user.username}",
+    discriminator: "{user.discriminator}"
+  }});
+</script>
+</body>
+</html>"""
+    return HTMLResponse(html)

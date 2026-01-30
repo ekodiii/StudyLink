@@ -1,3 +1,4 @@
+const browserAPI = typeof browser !== "undefined" ? browser : chrome;
 (async function () {
     // Only run on Canvas pages
     if (!window.location.hostname.endsWith(".instructure.com")) return;
@@ -6,11 +7,11 @@
     if (typeof ENV === "undefined" || !ENV.current_user_id) return;
 
     // Check auth
-    const { authToken } = await chrome.storage.local.get("authToken");
+    const { authToken } = await browserAPI.storage.local.get("authToken");
     if (!authToken) return;
 
     // Listen for manual sync requests from popup
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.type === "DO_SYNC") {
             syncAssignments().then(sendResponse);
             return true;
@@ -55,7 +56,7 @@
             }
 
             // Send to background script for debounced API call
-            const result = await chrome.runtime.sendMessage({
+            const result = await browserAPI.runtime.sendMessage({
                 type: "TRIGGER_SYNC",
                 data: syncData,
             });

@@ -3,7 +3,7 @@
     "name": "StudyLink — Canvas Sync",
     "version": "1.0.0",
     "description": "Sync Canvas assignments with your StudyLink groups",
-    "permissions": ["storage"],
+    "permissions": ["storage", "tabs"],
     "host_permissions": ["https://*.instructure.com/*"],
     "background": {
         "service_worker": "background.js"

@@ -94,10 +94,20 @@ async def sync_data(
 
         synced_courses += 1
 
-        # Create visibility entries for new courses
-        if is_new_course and user_group_ids:
+        # Create visibility entries for any groups missing them
+        if user_group_ids:
             groups_needing_decision = []
             for gid in user_group_ids:
+                # Check if visibility entry already exists
+                existing_cv = await db.execute(
+                    select(CourseVisibility).where(
+                        CourseVisibility.course_id == course.id,
+                        CourseVisibility.group_id == gid,
+                    )
+                )
+                if existing_cv.scalar_one_or_none():
+                    continue
+
                 cv = CourseVisibility(course_id=course.id, group_id=gid, visible=False)
                 db.add(cv)
                 prompt = PendingVisibilityPrompt(user_id=user.id, course_id=course.id, group_id=gid)
@@ -108,11 +118,12 @@ async def sync_data(
                 g = g_result.scalar_one()
                 groups_needing_decision.append({"group_id": str(gid), "group_name": g.name})
 
-            new_courses_needing_visibility.append({
-                "course_id": str(course.id),
-                "course_name": course.name,
-                "groups": groups_needing_decision,
-            })
+            if groups_needing_decision:
+                new_courses_needing_visibility.append({
+                    "course_id": str(course.id),
+                    "course_name": course.name,
+                    "groups": groups_needing_decision,
+                })
 
         # Upsert assignments
         for assignment_data in course_data.assignments:

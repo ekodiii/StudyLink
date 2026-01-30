@@ -1,5 +1,5 @@
 const browserAPI = typeof browser !== "undefined" ? browser : chrome;
-const API_BASE = "https://api.studylink.app";
+const API_BASE = "https://studylink-production.up.railway.app";
 
 document.addEventListener("DOMContentLoaded", async () => {
     const { authToken, username, discriminator, lastSync } =

@@ -1,5 +1,5 @@
 const browserAPI = typeof browser !== "undefined" ? browser : chrome;
-const API_BASE = "https://api.studylink.app";
+const API_BASE = "https://studylink-production.up.railway.app";
 const SYNC_DEBOUNCE_MS = 5 * 60 * 1000; // 5 minutes
 
 let lastSyncTime = 0;

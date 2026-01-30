@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyLink Canvas Sync - Privacy Policy</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1a73e8;
+            margin-bottom: 10px;
+        }
+        .last-updated {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #1a73e8;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e8f0fe;
+            padding-bottom: 10px;
+        }
+        p {
+            margin-bottom: 15px;
+        }
+        ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .highlight {
+            background-color: #e8f0fe;
+            padding: 15px;
+            border-left: 4px solid #1a73e8;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>StudyLink Canvas Sync - Privacy Policy</h1>
+        <p class="last-updated">Last Updated: January 30, 2025</p>
+
+        <h2>Overview</h2>
+        <p>StudyLink Canvas Sync ("the Extension") is a Chrome extension that helps you synchronize your Canvas course assignments with your StudyLink study groups. This privacy policy explains what data we collect, how we use it, and how we protect it.</p>
+
+        <h2>What Data We Collect</h2>
+        <div class="highlight">
+            <strong>The Extension collects the following data:</strong>
+        </div>
+        <ul>
+            <li><strong>Authentication Token:</strong> A secure token obtained through OAuth (Google or Apple Sign-In) that authenticates your requests to the StudyLink API</li>
+            <li><strong>Canvas Course Information:</strong> Course names, course codes, and Canvas course IDs from your enrolled courses</li>
+            <li><strong>Assignment Data:</strong> Assignment names, due dates, point values, submission status, and submission timestamps</li>
+            <li><strong>Canvas User ID:</strong> Your unique identifier within the Canvas LMS system</li>
+            <li><strong>Institution Domain:</strong> The Canvas domain you're accessing (e.g., institution.instructure.com)</li>
+            <li><strong>Sync Metadata:</strong> Last sync timestamp and sync results</li>
+        </ul>
+
+        <h2>How We Use Your Data</h2>
+        <p>Your data is used exclusively for the stated purpose of this Extension:</p>
+        <ul>
+            <li>Fetching your active Canvas courses and assignments</li>
+            <li>Synchronizing your assignment information to your StudyLink study groups</li>
+            <li>Maintaining your authentication state</li>
+            <li>Tracking sync history for your reference</li>
+        </ul>
+
+        <h2>Data Storage and Security</h2>
+        <ul>
+            <li><strong>Local Storage:</strong> Your authentication token, username, and sync timestamp are stored locally on your device using browser storage. Only you can access this data.</li>
+            <li><strong>API Communication:</strong> When you sync, assignment data is transmitted securely (HTTPS) to the StudyLink API backend (studylink-production.up.railway.app) for processing</li>
+            <li><strong>No Third-Party Sharing:</strong> We do not sell, share, or transfer your data to any third parties</li>
+        </ul>
+
+        <h2>Data Retention</h2>
+        <ul>
+            <li>Local data (tokens, sync history) is retained until you sign out or manually clear the Extension data</li>
+            <li>Data synced to StudyLink is retained according to StudyLink's data retention policy</li>
+            <li>You can delete all locally stored data at any time by signing out through the Extension popup</li>
+        </ul>
+
+        <h2>Permissions Explained</h2>
+        <div class="highlight">
+            <strong>The Extension requests the following permissions:</strong>
+        </div>
+        <ul>
+            <li><strong>Storage:</strong> To securely store your authentication token and sync history on your device</li>
+            <li><strong>Tabs:</strong> To detect when you're on a Canvas page, manage OAuth authentication tabs, and communicate between the extension and Canvas pages</li>
+            <li><strong>Host Permission (https://*.instructure.com/*):</strong> To fetch course and assignment data from Canvas LMS on your behalf</li>
+        </ul>
+
+        <h2>Your Rights and Controls</h2>
+        <ul>
+            <li><strong>Sign Out Anytime:</strong> Click "Sign Out" in the Extension popup to clear all stored authentication data</li>
+            <li><strong>Disable the Extension:</strong> You can disable or remove the Extension from your browser at any time</li>
+            <li><strong>Access Your Data:</strong> All data stored locally is accessible through your browser's developer tools</li>
+        </ul>
+
+        <h2>Changes to This Policy</h2>
+        <p>We may update this privacy policy from time to time. We will notify users of significant changes through the Extension or via our website.</p>
+
+        <h2>Contact Us</h2>
+        <p>If you have questions about this privacy policy or how we handle your data, please contact us through the StudyLink website or support channel.</p>
+
+        <h2>Compliance</h2>
+        <p>This Extension is designed to comply with Chrome Web Store Developer Program Policies and respects user privacy by:</p>
+        <ul>
+            <li>Only requesting necessary permissions</li>
+            <li>Storing data locally when possible</li>
+            <li>Never selling or sharing user data</li>
+            <li>Using secure authentication (OAuth)</li>
+            <li>Allowing users to delete their data at any time</li>
+        </ul>
+    </div>
+</body>
+</html>

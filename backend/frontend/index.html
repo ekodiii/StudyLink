@@ -32,7 +32,6 @@
 
         <div class="tabs">
             <div class="tab active" data-tab="groups" onclick="switchTab('groups')">Groups</div>
-            <div class="tab" data-tab="courses" onclick="switchTab('courses')">Courses</div>
             <div class="tab" data-tab="visibility" onclick="switchTab('visibility')">Visibility</div>
         </div>
 
@@ -45,16 +44,6 @@
                 </div>
             </div>
             <div id="groups-list"></div>
-        </div>
-
-        <div id="tab-courses" class="hidden">
-            <div class="section-header">
-                <h2>My Courses</h2>
-            </div>
-            <p style="color:var(--text2);font-size:13px;margin-bottom:16px">
-                Synced from Canvas. Hidden courses won't appear in any group.
-            </p>
-            <div id="courses-list"></div>
         </div>
 
         <div id="tab-visibility" class="hidden">
@@ -100,9 +89,12 @@
         <div class="progress-section">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
                 <h3>Assignment Progress</h3>
-                <div class="view-toggle">
-                    <button class="active" onclick="setView('member',this)">By Member</button>
-                    <button onclick="setView('assignment',this)">By Assignment</button>
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div id="leader-assignment-toggle" class="hidden"></div>
+                    <div class="view-toggle">
+                        <button class="active" onclick="setView('member',this)">By Member</button>
+                        <button onclick="setView('assignment',this)">By Assignment</button>
+                    </div>
                 </div>
             </div>
             <div id="progress-area"></div>

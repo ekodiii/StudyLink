@@ -174,8 +174,18 @@ async def sync_data(
 
     await db.commit()
 
+    # Return hidden course IDs so extension can skip them next sync
+    hidden_result = await db.execute(
+        select(Course.canvas_course_id).where(
+            Course.user_id == user.id,
+            Course.hidden == True,
+        )
+    )
+    hidden_course_ids = [row[0] for row in hidden_result.all()]
+
     return SyncResponse(
         synced_courses=synced_courses,
         synced_assignments=synced_assignments,
         new_courses_needing_visibility=new_courses_needing_visibility,
+        hidden_course_ids=hidden_course_ids,
     )

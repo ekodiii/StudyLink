@@ -4,6 +4,24 @@ const SYNC_DEBOUNCE_MS = 5 * 60 * 1000; // 5 minutes
 
 let lastSyncTime = 0;
 
+// Periodic sync every 6 hours
+browserAPI.alarms.create("studylink-sync", { periodInMinutes: 360 });
+
+browserAPI.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name !== "studylink-sync") return;
+    // Find any Canvas tab and trigger sync
+    browserAPI.tabs.query({ url: "https://*.instructure.com/*" }, (tabs) => {
+        if (tabs.length > 0) {
+            lastSyncTime = 0; // bypass debounce for alarm
+            browserAPI.tabs.sendMessage(tabs[0].id, { type: "DO_SYNC" }, () => {
+                if (browserAPI.runtime.lastError) {
+                    // Content script not loaded in tab, ignore
+                }
+            });
+        }
+    });
+});
+
 browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "TRIGGER_SYNC") {
         handleSync(message.data).then(sendResponse);
@@ -79,10 +97,14 @@ async function handleSync(syncData) {
         const result = await response.json();
         lastSyncTime = now;
 
-        await browserAPI.storage.local.set({
+        const storageData = {
             lastSync: new Date().toISOString(),
             lastSyncResult: result,
-        });
+        };
+        if (result.hidden_course_ids) {
+            storageData.hiddenCourseIds = result.hidden_course_ids;
+        }
+        await browserAPI.storage.local.set(storageData);
 
         return result;
     } catch (err) {

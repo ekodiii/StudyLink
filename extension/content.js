@@ -61,8 +61,20 @@
     // Auto-sync on page load
     await syncAssignments();
 
+    // Watch for assignment submissions and re-sync
+    observeSubmissions();
+
     async function syncAssignments() {
         const domain = window.location.hostname;
+
+        // Load hidden course IDs from previous sync
+        let hiddenCourseIds = new Set();
+        try {
+            const stored = await browserAPI.storage.local.get("hiddenCourseIds");
+            if (stored.hiddenCourseIds) {
+                hiddenCourseIds = new Set(stored.hiddenCourseIds);
+            }
+        } catch (e) { /* ignore */ }
 
         try {
             // Step 1: Get all active courses
@@ -87,6 +99,10 @@
             // Step 2: For each course, fetch its assignments
             for (const course of courses) {
                 if (!course.id || !course.name) continue;
+                if (hiddenCourseIds.has(String(course.id))) {
+                    console.log(`[StudyLink] Skipping hidden course: ${course.name}`);
+                    continue;
+                }
 
                 console.log(`[StudyLink] Fetching assignments for: ${course.name}`);
 
@@ -192,5 +208,45 @@
             if (match) return match[1];
         }
         return null;
+    }
+
+    function observeSubmissions() {
+        let syncTimer = null;
+        const triggerDelayedSync = () => {
+            if (syncTimer) clearTimeout(syncTimer);
+            syncTimer = setTimeout(() => {
+                console.log("[StudyLink] Submission detected, re-syncing...");
+                syncAssignments();
+            }, 3000);
+        };
+
+        // Watch for Canvas flash messages (submission success notifications)
+        const observer = new MutationObserver((mutations) => {
+            for (const m of mutations) {
+                for (const node of m.addedNodes) {
+                    if (!(node instanceof HTMLElement)) continue;
+                    // Canvas shows flash messages for successful submissions
+                    if (node.classList?.contains("ic-flash-success") ||
+                        node.querySelector?.(".ic-flash-success")) {
+                        triggerDelayedSync();
+                        return;
+                    }
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Watch for SPA navigation to submission pages
+        let lastUrl = location.href;
+        const urlObserver = new MutationObserver(() => {
+            if (location.href !== lastUrl) {
+                lastUrl = location.href;
+                // Submission confirmation pages
+                if (/\/courses\/\d+\/assignments\/\d+\/submissions\/\d+/.test(lastUrl)) {
+                    triggerDelayedSync();
+                }
+            }
+        });
+        urlObserver.observe(document.body, { childList: true, subtree: true });
     }
 })();

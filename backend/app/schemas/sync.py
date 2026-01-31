@@ -33,3 +33,4 @@ class SyncResponse(BaseModel):
     synced_courses: int
     synced_assignments: int
     new_courses_needing_visibility: list[dict] = []
+    hidden_course_ids: list[str] = []

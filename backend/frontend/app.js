@@ -548,8 +548,9 @@ function renderByAssignment(area) {
                 if (!entry.assignments.has(aKey)) {
                     entry.assignments.set(aKey, { name: a.name, due_at: a.due_at, members: [] });
                 }
-                entry.assignments.get(aKey).members.push({ username: member.username, status: a.status });
-                entry.statuses.push({ status: a.status });
+                const es = effectiveStatus(a);
+                entry.assignments.get(aKey).members.push({ username: member.username, status: es });
+                entry.statuses.push({ status: es });
             }
         }
     }

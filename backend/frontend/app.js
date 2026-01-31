@@ -860,11 +860,11 @@ async function loadCourses() {
     if (courses.length === 0) { el.innerHTML = '<div class="empty">No courses synced yet</div>'; return; }
     el.innerHTML = courses.map(c => `
         <div class="vis-row">
-            <div>
-                <div style="font-weight:600;font-size:14px">${esc(c.name)}</div>
-                <div style="color:var(--text2);font-size:12px">${esc(c.course_code || '')}</div>
+            <div style="min-width:0;flex:1;overflow:hidden">
+                <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</div>
+                <div style="color:var(--text2);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.course_code || '')}</div>
             </div>
-            <label class="toggle">
+            <label class="toggle" style="flex-shrink:0">
                 <input type="checkbox" ${c.hidden ? '' : 'checked'} onchange="toggleCourseHiddenFromTab('${c.id}',this)">
                 <span class="slider"></span>
             </label>

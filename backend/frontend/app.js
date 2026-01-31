@@ -158,9 +158,10 @@ async function showMain() {
 
 function switchTab(tab) {
     document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
-    document.getElementById("tab-groups").classList.toggle("hidden", tab !== "groups");
-    document.getElementById("tab-courses").classList.toggle("hidden", tab !== "courses");
-    document.getElementById("tab-visibility").classList.toggle("hidden", tab !== "visibility");
+    ["tab-groups", "tab-courses", "tab-visibility"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle("hidden", id !== "tab-" + tab);
+    });
     if (tab === "courses") loadCourses();
     if (tab === "visibility") loadVisibility();
 }
@@ -864,7 +865,7 @@ async function loadCourses() {
                 <div style="color:var(--text2);font-size:12px">${esc(c.course_code || '')}</div>
             </div>
             <label class="toggle">
-                <input type="checkbox" ${c.hidden ? 'checked' : ''} onchange="toggleCourseHiddenFromTab('${c.canvas_course_id}',this)">
+                <input type="checkbox" ${c.hidden ? 'checked' : ''} onchange="toggleCourseHiddenFromTab('${c.id}',this)">
                 <span class="slider"></span>
             </label>
         </div>

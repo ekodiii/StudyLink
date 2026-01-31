@@ -3,12 +3,23 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class VerificationBrief(BaseModel):
+    id: str
+    status: str
+    verification_word: str
+    verifier_id: str
+    verifier_username: str
+    requester_id: str
+    requester_username: str
+
+
 class ProgressAssignment(BaseModel):
     assignment_id: str
     name: str
     due_at: datetime | None = None
     status: str
     submitted_at: datetime | None = None
+    verification: VerificationBrief | None = None
 
 
 class ProgressCourse(BaseModel):
@@ -31,3 +42,18 @@ class GroupProgressResponse(BaseModel):
     group_id: str
     group_name: str
     members: list[ProgressMember] = []
+
+
+class DashboardAssignment(BaseModel):
+    assignment_id: str
+    name: str
+    due_at: datetime | None = None
+    status: str
+    course_name: str
+    member_username: str
+    member_user_id: str
+
+
+class GroupDashboardResponse(BaseModel):
+    upcoming: list[DashboardAssignment] = []
+    missing: list[DashboardAssignment] = []

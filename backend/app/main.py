@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .routers import auth, users, groups, sync, visibility, progress
+from .routers import auth, users, groups, sync, visibility, progress, verification
 
 app = FastAPI(title="StudyLink", version="1.0.0", description="Canvas assignment sync for study groups")
 
@@ -23,6 +23,7 @@ app.include_router(groups.router)
 app.include_router(sync.router)
 app.include_router(visibility.router)
 app.include_router(progress.router)
+app.include_router(verification.router)
 
 # Serve frontend static files
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"

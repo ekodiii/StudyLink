@@ -269,8 +269,9 @@ async function showGroupDetail(groupId) {
         leaderToggleEl.classList.add("hidden");
     }
 
-    // Load progress
+    // Load progress + dashboard
     await loadProgress(groupId);
+    await loadDashboard(groupId);
 }
 
 async function loadProgress(groupId) {
@@ -278,6 +279,56 @@ async function loadProgress(groupId) {
     if (!resp.ok) return;
     currentProgress = await resp.json();
     renderProgress();
+}
+
+async function loadDashboard(groupId) {
+    const resp = await api(`/groups/${groupId}/dashboard`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    renderDashboard(data);
+}
+
+function renderDashboard(data) {
+    const area = document.getElementById("dashboard-area");
+    if (!data.upcoming.length && !data.missing.length) {
+        area.innerHTML = "";
+        return;
+    }
+    let html = `<div class="dashboard">`;
+    if (data.upcoming.length) {
+        html += `<div class="dashboard-section">`;
+        html += `<div class="dashboard-header collapsible-header" onclick="toggleCollapsible(this)">
+            <span class="dashboard-title">&#9200; Upcoming (7 days) &mdash; ${data.upcoming.length} assignment${data.upcoming.length !== 1 ? 's' : ''}</span>
+            <span class="chevron">&#9660;</span>
+        </div>`;
+        html += `<div class="collapsible-content">`;
+        for (const a of data.upcoming) {
+            html += `<div class="assignment-row">
+                <span class="assignment-name">${esc(a.member_username)} &middot; ${esc(a.course_name)} &mdash; ${esc(a.name)}</span>
+                <span class="assignment-due">${formatDue(a.due_at)}</span>
+                ${statusHTML(a.status)}
+            </div>`;
+        }
+        html += `</div></div>`;
+    }
+    if (data.missing.length) {
+        html += `<div class="dashboard-section">`;
+        html += `<div class="dashboard-header collapsible-header" onclick="toggleCollapsible(this)">
+            <span class="dashboard-title">&#9888; Missing &mdash; ${data.missing.length} assignment${data.missing.length !== 1 ? 's' : ''}</span>
+            <span class="chevron">&#9660;</span>
+        </div>`;
+        html += `<div class="collapsible-content">`;
+        for (const a of data.missing) {
+            html += `<div class="assignment-row">
+                <span class="assignment-name">${esc(a.member_username)} &middot; ${esc(a.course_name)} &mdash; ${esc(a.name)}</span>
+                <span class="assignment-due">${formatDue(a.due_at)}</span>
+                ${statusHTML(a.status)}
+            </div>`;
+        }
+        html += `</div></div>`;
+    }
+    html += `</div>`;
+    area.innerHTML = html;
 }
 
 function setView(view, btn) {
@@ -329,27 +380,96 @@ function toggleCollapsible(el) {
     el.classList.toggle("collapsed", isOpen);
 }
 
+function countStatuses(assignments) {
+    const c = {};
+    for (const a of assignments) c[a.status] = (c[a.status] || 0) + 1;
+    return c;
+}
+
+function summaryHTML(counts) {
+    const parts = [];
+    if (counts.submitted) parts.push(`<span class="status status-submitted">${counts.submitted} submitted</span>`);
+    if (counts.graded) parts.push(`<span class="status status-graded">${counts.graded} graded</span>`);
+    if (counts.late) parts.push(`<span class="status status-late">${counts.late} late</span>`);
+    if (counts.missing) parts.push(`<span class="status status-missing">${counts.missing} missing</span>`);
+    if (counts.unsubmitted) parts.push(`<span class="status status-unsubmitted">${counts.unsubmitted} pending</span>`);
+    return parts.length ? `<span class="summary-counts">${parts.join(' ')}</span>` : '';
+}
+
+function verificationHTML(a, member) {
+    const v = a.verification;
+    const isMe = member.user_id === currentUser.id;
+    const iAmVerifier = v && v.verifier_id === currentUser.id;
+    const iAmRequester = v && v.requester_id === currentUser.id;
+
+    if (!v) {
+        // Only show request button on own assignments
+        if (isMe) {
+            return `<div class="verify-actions">
+                <select class="verify-select" id="vsel-${a.assignment_id}">
+                    <option value="">Ask friend...</option>
+                    ${currentGroup.members.filter(m => m.id !== currentUser.id).map(m =>
+                        `<option value="${m.id}">${esc(m.username)}</option>`
+                    ).join('')}
+                </select>
+                <button class="btn btn-secondary btn-small" onclick="requestVerification('${a.assignment_id}', document.getElementById('vsel-${a.assignment_id}').value)">Request</button>
+            </div>`;
+        }
+        return '';
+    }
+
+    if (v.status === 'pending') {
+        if (iAmRequester) {
+            return `<span class="verify-badge verify-pending">Pending verify by ${esc(v.verifier_username)} &middot; word: <strong>${esc(v.verification_word)}</strong>
+                <button class="btn btn-secondary btn-small" onclick="cancelVerification('${v.id}')">Cancel</button></span>`;
+        }
+        if (iAmVerifier) {
+            return `<span class="verify-badge verify-pending">
+                ${esc(v.requester_username)} asks you to verify &middot; type: <strong>${esc(v.verification_word)}</strong>
+                <input class="verify-input" id="vword-${v.id}" placeholder="Type word...">
+                <button class="btn btn-primary btn-small" onclick="confirmVerification('${v.id}')">Verify</button>
+            </span>`;
+        }
+        return `<span class="verify-badge verify-pending">Pending verification</span>`;
+    }
+
+    if (v.status === 'verified') {
+        let actions = '';
+        if (iAmRequester) actions = `<button class="btn btn-secondary btn-small" onclick="cancelVerification('${v.id}')">Undo</button>`;
+        if (iAmVerifier) actions = `<button class="btn btn-secondary btn-small" onclick="revokeVerification('${v.id}')">Revoke</button>`;
+        return `<span class="verify-badge verify-confirmed">&#10003; Verified by ${esc(v.verifier_username)} ${actions}</span>`;
+    }
+
+    return '';
+}
+
 function renderByMember(area) {
     let html = "";
     for (const member of currentProgress.members) {
+        // Compute member-level summary
+        const allAssignments = member.courses.flatMap(c => c.assignments);
+        const memberCounts = countStatuses(allAssignments);
+
         html += `<div class="card" style="cursor:default">`;
-        html += `<div class="card-header collapsible-header" onclick="toggleCollapsible(this)">
+        html += `<div class="card-header collapsible-header collapsed" onclick="toggleCollapsible(this)">
             <span class="card-title">${esc(member.username)}</span>
-            <span class="card-meta">synced ${timeAgo(member.last_synced_at)} <span class="chevron">&#9660;</span></span>
+            <span class="card-meta">${summaryHTML(memberCounts)} synced ${timeAgo(member.last_synced_at)} <span class="chevron">&#9660;</span></span>
         </div>`;
-        html += `<div class="collapsible-content">`;
+        html += `<div class="collapsible-content collapsed">`;
         if (!member.courses.length) {
             html += `<div class="card-meta" style="padding:8px 0">No visible courses</div>`;
         }
         for (const course of member.courses) {
+            const courseCounts = countStatuses(course.assignments);
             html += `<div class="course-block">`;
-            html += `<div class="course-label collapsible-header" onclick="toggleCollapsible(this)">${esc(course.course_code || course.name)} <span class="chevron">&#9660;</span></div>`;
-            html += `<div class="collapsible-content">`;
+            html += `<div class="course-label collapsible-header collapsed" onclick="toggleCollapsible(this)">${esc(course.course_code || course.name)} ${summaryHTML(courseCounts)} <span class="chevron">&#9660;</span></div>`;
+            html += `<div class="collapsible-content collapsed">`;
             for (const a of course.assignments) {
                 html += `<div class="assignment-row">
                     <span class="assignment-name">${esc(a.name)}</span>
                     <span class="assignment-due">${formatDue(a.due_at)}</span>
                     ${statusHTML(a.status)}
+                    ${verificationHTML(a, member)}
                 </div>`;
             }
             if (!course.assignments.length) {
@@ -365,28 +485,21 @@ function renderByMember(area) {
 }
 
 function renderByAssignment(area) {
-    // Collect all assignments across members, grouped by course then assignment
     const courseMap = new Map();
     for (const member of currentProgress.members) {
         for (const course of member.courses) {
             const courseKey = course.course_code || course.name;
             if (!courseMap.has(courseKey)) {
-                courseMap.set(courseKey, new Map());
+                courseMap.set(courseKey, { assignments: new Map(), statuses: [] });
             }
-            const assignMap = courseMap.get(courseKey);
+            const entry = courseMap.get(courseKey);
             for (const a of course.assignments) {
                 const aKey = `${a.name}||${a.due_at}`;
-                if (!assignMap.has(aKey)) {
-                    assignMap.set(aKey, {
-                        name: a.name,
-                        due_at: a.due_at,
-                        members: [],
-                    });
+                if (!entry.assignments.has(aKey)) {
+                    entry.assignments.set(aKey, { name: a.name, due_at: a.due_at, members: [] });
                 }
-                assignMap.get(aKey).members.push({
-                    username: member.username,
-                    status: a.status,
-                });
+                entry.assignments.get(aKey).members.push({ username: member.username, status: a.status });
+                entry.statuses.push({ status: a.status });
             }
         }
     }
@@ -397,14 +510,15 @@ function renderByAssignment(area) {
     }
 
     let html = "";
-    for (const [courseName, assignments] of courseMap) {
+    for (const [courseName, entry] of courseMap) {
+        const courseCounts = countStatuses(entry.statuses);
         html += `<div class="card" style="cursor:default">`;
-        html += `<div class="card-header collapsible-header" onclick="toggleCollapsible(this)">
+        html += `<div class="card-header collapsible-header collapsed" onclick="toggleCollapsible(this)">
             <span class="card-title">${esc(courseName)}</span>
-            <span class="chevron">&#9660;</span>
+            <span class="card-meta">${summaryHTML(courseCounts)} <span class="chevron">&#9660;</span></span>
         </div>`;
-        html += `<div class="collapsible-content">`;
-        for (const [, info] of assignments) {
+        html += `<div class="collapsible-content collapsed">`;
+        for (const [, info] of entry.assignments) {
             html += `<div class="course-block">`;
             html += `<div class="course-label">${esc(info.name)} <span class="card-meta">${formatDue(info.due_at)}</span></div>`;
             for (const m of info.members) {
@@ -420,6 +534,48 @@ function renderByAssignment(area) {
     }
     area.innerHTML = html;
 }
+
+// ── Verification ────────────────────────────────────────────────────────────
+
+async function requestVerification(assignmentId, verifierId) {
+    if (!verifierId) { alert("Select a friend to verify"); return; }
+    const resp = await api("/verification/request", {
+        method: "POST",
+        body: JSON.stringify({ assignment_id: assignmentId, verifier_id: verifierId, group_id: currentGroupId }),
+    });
+    if (resp.status === 409) { alert("Active verification already exists"); return; }
+    if (!resp.ok) { alert("Failed to create request"); return; }
+    await loadProgress(currentGroupId);
+}
+
+async function confirmVerification(requestId) {
+    const input = document.getElementById(`vword-${requestId}`);
+    const word = input ? input.value.trim() : "";
+    if (!word) { alert("Type the verification word"); return; }
+    const resp = await api(`/verification/${requestId}/verify`, {
+        method: "POST",
+        body: JSON.stringify({ verification_word: word }),
+    });
+    if (resp.status === 400) { alert("Incorrect word. Try again."); return; }
+    if (!resp.ok) { alert("Failed to verify"); return; }
+    await loadProgress(currentGroupId);
+}
+
+async function cancelVerification(requestId) {
+    if (!confirm("Cancel this verification request?")) return;
+    const resp = await api(`/verification/${requestId}/cancel`, { method: "POST" });
+    if (!resp.ok) { alert("Failed to cancel"); return; }
+    await loadProgress(currentGroupId);
+}
+
+async function revokeVerification(requestId) {
+    if (!confirm("Revoke this verification?")) return;
+    const resp = await api(`/verification/${requestId}/revoke`, { method: "POST" });
+    if (!resp.ok) { alert("Failed to revoke"); return; }
+    await loadProgress(currentGroupId);
+}
+
+// ── Group Actions ───────────────────────────────────────────────────────────
 
 async function copyInvite() {
     const code = document.getElementById("detail-invite").textContent;

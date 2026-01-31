@@ -8,8 +8,10 @@ from .assignment import Assignment
 from .submission import Submission
 from .course_visibility import CourseVisibility
 from .pending_visibility_prompt import PendingVisibilityPrompt
+from .verification_request import VerificationRequest, VerificationStatus
 
 __all__ = [
     "User", "Institution", "UserInstitutionLink", "Group", "GroupMember",
     "Course", "Assignment", "Submission", "CourseVisibility", "PendingVisibilityPrompt",
+    "VerificationRequest", "VerificationStatus",
 ]

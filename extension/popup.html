@@ -51,7 +51,22 @@
         .btn-primary { background: #4f46e5; color: white; }
         .btn-secondary { background: #e5e7eb; color: #374151; }
         .btn-danger { background: #fee2e2; color: #dc2626; }
+        .btn-small { width: auto; padding: 4px 10px; font-size: 12px; margin: 0; }
         .hidden { display: none; }
+        .accounts-section { margin-top: 12px; }
+        .accounts-section h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #555; }
+        .account-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 10px; background: #f0f0f0; border-radius: 6px;
+            margin-bottom: 6px; font-size: 12px;
+        }
+        .account-info { flex: 1; min-width: 0; }
+        .account-domain { font-weight: 600; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .account-id { color: #888; font-size: 11px; }
+        .account-status-badge { font-size: 11px; font-weight: 600; margin: 0 6px; }
+        .account-status-badge.allowed { color: #2e7d32; }
+        .account-status-badge.denied { color: #dc2626; }
+        .account-actions { display: flex; gap: 4px; flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -71,6 +86,10 @@
             <div class="sync-time" id="display-sync"></div>
         </div>
         <button class="btn-primary" id="btn-sync">Sync Now</button>
+        <div id="accounts-section" class="accounts-section hidden">
+            <h3>Canvas Accounts</h3>
+            <div id="accounts-list"></div>
+        </div>
         <button class="btn-danger" id="btn-signout">Sign Out</button>
     </div>
 

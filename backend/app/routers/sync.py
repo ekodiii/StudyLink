@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.database import get_db
@@ -189,3 +189,66 @@ async def sync_data(
         new_courses_needing_visibility=new_courses_needing_visibility,
         hidden_course_ids=hidden_course_ids,
     )
+
+
+@router.delete("/account/{canvas_user_id}")
+async def remove_account_data(
+    canvas_user_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove all synced data for a specific Canvas account."""
+    # Find the institution link for this canvas user ID
+    link_result = await db.execute(
+        select(UserInstitutionLink).where(
+            UserInstitutionLink.user_id == user.id,
+            UserInstitutionLink.canvas_user_id == canvas_user_id,
+        )
+    )
+    link = link_result.scalar_one_or_none()
+    if not link:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    # Find all courses for this user at this institution
+    courses_result = await db.execute(
+        select(Course).where(
+            Course.user_id == user.id,
+            Course.institution_id == link.institution_id,
+        )
+    )
+    courses = courses_result.scalars().all()
+    course_ids = [c.id for c in courses]
+
+    if course_ids:
+        # Delete submissions for these courses' assignments
+        assignment_ids_result = await db.execute(
+            select(Assignment.id).where(Assignment.course_id.in_(course_ids))
+        )
+        assignment_ids = [row[0] for row in assignment_ids_result.all()]
+
+        if assignment_ids:
+            await db.execute(
+                delete(Submission).where(Submission.assignment_id.in_(assignment_ids))
+            )
+            await db.execute(
+                delete(Assignment).where(Assignment.id.in_(assignment_ids))
+            )
+
+        # Delete course visibility and pending prompts
+        await db.execute(
+            delete(CourseVisibility).where(CourseVisibility.course_id.in_(course_ids))
+        )
+        await db.execute(
+            delete(PendingVisibilityPrompt).where(PendingVisibilityPrompt.course_id.in_(course_ids))
+        )
+
+        # Delete courses
+        await db.execute(
+            delete(Course).where(Course.id.in_(course_ids))
+        )
+
+    # Delete the institution link
+    await db.delete(link)
+    await db.commit()
+
+    return {"removed_courses": len(course_ids)}

@@ -50,6 +50,15 @@
         return;
     }
 
+    // Check if this Canvas account is allowed to sync
+    const domain = window.location.hostname;
+    const accountKey = `${domain}:${canvasUserId}`;
+    const accountAllowed = await checkAccountAllowed(domain, canvasUserId);
+    if (!accountAllowed) {
+        console.log("[StudyLink] Account not allowed, skipping sync");
+        return;
+    }
+
     // Listen for manual sync requests from popup
     browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.type === "DO_SYNC") {
@@ -63,6 +72,59 @@
 
     // Watch for assignment submissions and re-sync
     observeSubmissions();
+
+    async function checkAccountAllowed(domain, userId) {
+        const stored = await browserAPI.storage.local.get("knownAccounts");
+        const accounts = stored.knownAccounts || [];
+        const existing = accounts.find(a => a.domain === domain && a.canvasUserId === userId);
+
+        if (existing) {
+            return existing.status === "allowed";
+        }
+
+        // First account ever — auto-allow silently
+        if (accounts.length === 0) {
+            accounts.push({ domain, canvasUserId: userId, status: "allowed" });
+            await browserAPI.storage.local.set({ knownAccounts: accounts });
+            console.log("[StudyLink] First account registered:", accountKey);
+            return true;
+        }
+
+        // New unknown account — show confirmation banner on the Canvas page
+        return new Promise((resolve) => {
+            const banner = document.createElement("div");
+            banner.id = "studylink-account-banner";
+            banner.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; z-index: 999999;
+                background: #4f46e5; color: white; padding: 12px 20px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                font-size: 14px; display: flex; align-items: center; justify-content: space-between;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            `;
+            banner.innerHTML = `
+                <span>StudyLink detected a different Canvas account on <b>${domain}</b>. Sync this account?</span>
+                <span>
+                    <button id="studylink-allow" style="background:white;color:#4f46e5;border:none;padding:6px 16px;border-radius:6px;font-weight:600;cursor:pointer;margin-left:8px;">Allow</button>
+                    <button id="studylink-deny" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:6px 16px;border-radius:6px;font-weight:600;cursor:pointer;margin-left:8px;">Deny</button>
+                </span>
+            `;
+            document.body.prepend(banner);
+
+            document.getElementById("studylink-allow").addEventListener("click", async () => {
+                accounts.push({ domain, canvasUserId: userId, status: "allowed" });
+                await browserAPI.storage.local.set({ knownAccounts: accounts });
+                banner.remove();
+                resolve(true);
+            });
+
+            document.getElementById("studylink-deny").addEventListener("click", async () => {
+                accounts.push({ domain, canvasUserId: userId, status: "denied" });
+                await browserAPI.storage.local.set({ knownAccounts: accounts });
+                banner.remove();
+                resolve(false);
+            });
+        });
+    }
 
     async function syncAssignments() {
         const domain = window.location.hostname;

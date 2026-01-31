@@ -269,10 +269,12 @@ async function showGroupDetail(groupId) {
     if (isLeader) {
         leaderToggleEl.classList.remove("hidden");
         leaderToggleEl.innerHTML = `
-            <label class="toggle" style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)">
+            <label class="leader-toggle-label">
                 <span>Assignment view</span>
-                <input type="checkbox" ${group.assignment_view_enabled ? 'checked' : ''} onchange="toggleAssignmentView(this.checked)">
-                <span class="slider"></span>
+                <label class="toggle">
+                    <input type="checkbox" ${group.assignment_view_enabled ? 'checked' : ''} onchange="toggleAssignmentView(this.checked)">
+                    <span class="slider"></span>
+                </label>
             </label>`;
     } else {
         leaderToggleEl.classList.add("hidden");
@@ -682,7 +684,6 @@ async function showPendingDecisions() {
 }
 
 async function loadVisibility() {
-    // Load both settings and pending
     const [settingsResp, pendingResp] = await Promise.all([
         api("/visibility/settings"),
         api("/visibility/pending"),
@@ -693,66 +694,136 @@ async function loadVisibility() {
     const pending = pendingResp.ok ? (await pendingResp.json()).pending : [];
     const el = document.getElementById("visibility-list");
 
-    // Build combined list: pending (undecided) + existing settings
+    // Group settings by course
+    const courseMap = new Map();
+    for (const item of settings) {
+        if (!courseMap.has(item.course_id)) {
+            courseMap.set(item.course_id, { name: item.course_name, groups: [] });
+        }
+        courseMap.get(item.course_id).groups.push(item);
+    }
+
+    // Merge pending into course map
+    for (const course of pending) {
+        if (!courseMap.has(course.course_id)) {
+            courseMap.set(course.course_id, { name: course.course_name, groups: [], pending: [] });
+        }
+        const entry = courseMap.get(course.course_id);
+        if (!entry.pending) entry.pending = [];
+        entry.pending.push(...course.groups);
+    }
+
+    // Store for overlay use
+    window._visibilityData = courseMap;
+
     let html = "";
 
-    if (pending.length) {
-        html += `<h3 style="margin-bottom:12px;color:var(--accent)">New Courses</h3>`;
-        for (const course of pending) {
-            for (const group of course.groups) {
-                html += `
-                    <div class="vis-row">
-                        <div>
-                            <div style="font-weight:500">${esc(course.course_name)}</div>
-                            <div style="font-size:12px;color:var(--text2)">Share with ${esc(group.group_name)}</div>
-                        </div>
-                        <div style="display:flex;gap:6px">
-                            <button class="btn btn-primary btn-small" onclick="decideCourse('${course.course_id}','${group.group_id}',true)">Share</button>
-                            <button class="btn btn-secondary btn-small" onclick="decideCourse('${course.course_id}','${group.group_id}',false)">Hide</button>
-                        </div>
-                    </div>`;
-            }
-        }
-    }
-
-    if (settings.length) {
-        html += `<h3 style="margin:16px 0 12px">All Settings</h3>`;
-        for (const item of settings) {
-            html += `
-                <div class="vis-row">
-                    <div>
-                        <div style="font-weight:500">${esc(item.course_name)}</div>
-                        <div style="font-size:12px;color:var(--text2)">${esc(item.group_name)}</div>
-                    </div>
-                    <label class="toggle">
-                        <input type="checkbox" ${item.visible ? 'checked' : ''} onchange="toggleVis('${item.course_id}','${item.group_id}',this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>`;
-        }
-    }
-
-    if (!html) {
+    if (!courseMap.size) {
         html = `<div class="empty">No courses synced yet. Use the browser extension to sync your Canvas assignments.</div>`;
+        el.innerHTML = html;
+        return;
+    }
+
+    // Show pending banner if any
+    const totalPending = pending.reduce((n, c) => n + c.groups.length, 0);
+    if (totalPending > 0) {
+        html += `<div class="pending-banner" style="margin-bottom:16px">
+            <span>${totalPending} new course${totalPending > 1 ? 's need' : ' needs'} visibility decisions</span>
+        </div>`;
+    }
+
+    for (const [courseId, data] of courseMap) {
+        const sharedCount = data.groups.filter(g => g.visible).length;
+        const totalGroups = data.groups.length + (data.pending ? data.pending.length : 0);
+        const pendingCount = data.pending ? data.pending.length : 0;
+        let meta = `Shared with ${sharedCount}/${totalGroups} group${totalGroups !== 1 ? 's' : ''}`;
+        if (pendingCount > 0) meta += ` · <span style="color:var(--accent)">${pendingCount} pending</span>`;
+
+        html += `<div class="vis-course-card" onclick="openVisOverlay('${courseId}')">
+            <div class="vis-course-name">${esc(data.name)}</div>
+            <div class="vis-course-meta">${meta}</div>
+        </div>`;
     }
 
     el.innerHTML = html;
 }
 
-async function decideCourse(courseId, groupId, visible) {
-    await api("/visibility/decide", {
-        method: "POST",
-        body: JSON.stringify({ decisions: [{ course_id: courseId, group_id: groupId, visible }] }),
-    });
-    await loadVisibility();
-    await loadPending();
+function openVisOverlay(courseId) {
+    const data = window._visibilityData.get(courseId);
+    if (!data) return;
+
+    // Remove existing overlay if any
+    document.getElementById("vis-overlay")?.remove();
+
+    let groupsHTML = "";
+
+    // Existing groups with toggles
+    for (const g of data.groups) {
+        groupsHTML += `
+            <div class="vis-group-row">
+                <span class="vis-group-name">${esc(g.group_name)}</span>
+                <label class="toggle">
+                    <input type="checkbox" ${g.visible ? 'checked' : ''} onchange="toggleVisFromOverlay('${courseId}','${g.group_id}',this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>`;
+    }
+
+    // Pending groups with share/hide buttons
+    if (data.pending) {
+        for (const g of data.pending) {
+            groupsHTML += `
+                <div class="vis-group-row" id="vis-pending-${courseId}-${g.group_id}">
+                    <div>
+                        <span class="vis-group-name">${esc(g.group_name)}</span>
+                        <div style="font-size:11px;color:var(--accent)">New</div>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button class="btn btn-primary btn-small" onclick="decideCourseOverlay('${courseId}','${g.group_id}',true)">Share</button>
+                        <button class="btn btn-secondary btn-small" onclick="decideCourseOverlay('${courseId}','${g.group_id}',false)">Hide</button>
+                    </div>
+                </div>`;
+        }
+    }
+
+    const overlay = document.createElement("div");
+    overlay.id = "vis-overlay";
+    overlay.className = "vis-overlay";
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    overlay.innerHTML = `
+        <div class="vis-panel">
+            <h3>${esc(data.name)}</h3>
+            <div class="vis-course-code">Choose which groups can see this course</div>
+            ${groupsHTML}
+            <div style="margin-top:16px;text-align:right">
+                <button class="btn btn-secondary btn-small" onclick="document.getElementById('vis-overlay').remove()">Done</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
 }
 
-async function toggleVis(courseId, groupId, visible) {
+async function toggleVisFromOverlay(courseId, groupId, visible) {
     await api("/visibility/settings", {
         method: "PATCH",
         body: JSON.stringify({ decisions: [{ course_id: courseId, group_id: groupId, visible }] }),
     });
+    // Update local data
+    const data = window._visibilityData.get(courseId);
+    if (data) {
+        const g = data.groups.find(g => g.group_id === groupId);
+        if (g) g.visible = visible;
+    }
+}
+
+async function decideCourseOverlay(courseId, groupId, visible) {
+    await api("/visibility/decide", {
+        method: "POST",
+        body: JSON.stringify({ decisions: [{ course_id: courseId, group_id: groupId, visible }] }),
+    });
+    // Close overlay and reload
+    document.getElementById("vis-overlay")?.remove();
+    await loadVisibility();
+    await loadPending();
 }
 
 // ── Settings ────────────────────────────────────────────────────────────────

@@ -59,6 +59,14 @@ function timeAgo(iso) {
     return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function isOverdue(a) {
+    return a.due_at && a.status === "unsubmitted" && new Date(a.due_at) < new Date();
+}
+
+function effectiveStatus(a) {
+    return isOverdue(a) ? "overdue" : a.status;
+}
+
 function statusHTML(s) {
     const labels = {
         submitted: "Submitted",
@@ -66,6 +74,7 @@ function statusHTML(s) {
         late: "Late",
         missing: "Missing",
         unsubmitted: "Not yet",
+        overdue: "Overdue",
     };
     return `<span class="status status-${s}">${labels[s] || s}</span>`;
 }
@@ -290,7 +299,28 @@ async function loadDashboard(groupId) {
 
 function renderDashboard(data) {
     const area = document.getElementById("dashboard-area");
-    if (!data.upcoming.length && !data.missing.length) {
+
+    // Compute overdue client-side: unsubmitted + past due (local time)
+    const overdue = [];
+    if (currentProgress) {
+        for (const member of currentProgress.members) {
+            for (const course of member.courses) {
+                for (const a of course.assignments) {
+                    if (isOverdue(a)) {
+                        overdue.push({
+                            name: a.name,
+                            due_at: a.due_at,
+                            course_name: course.course_code || course.name,
+                            member_username: member.username,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    overdue.sort((a, b) => new Date(a.due_at) - new Date(b.due_at));
+
+    if (!data.upcoming.length && !data.missing.length && !overdue.length) {
         area.innerHTML = "";
         return;
     }
@@ -306,7 +336,23 @@ function renderDashboard(data) {
             html += `<div class="assignment-row">
                 <span class="assignment-name">${esc(a.member_username)} &middot; ${esc(a.course_name)} &mdash; ${esc(a.name)}</span>
                 <span class="assignment-due">${formatDue(a.due_at)}</span>
-                ${statusHTML(a.status)}
+                ${statusHTML(effectiveStatus(a))}
+            </div>`;
+        }
+        html += `</div></div>`;
+    }
+    if (overdue.length) {
+        html += `<div class="dashboard-section">`;
+        html += `<div class="dashboard-header collapsible-header" onclick="toggleCollapsible(this)">
+            <span class="dashboard-title">&#9203; Overdue &mdash; ${overdue.length} assignment${overdue.length !== 1 ? 's' : ''}</span>
+            <span class="chevron">&#9660;</span>
+        </div>`;
+        html += `<div class="collapsible-content">`;
+        for (const a of overdue) {
+            html += `<div class="assignment-row">
+                <span class="assignment-name">${esc(a.member_username)} &middot; ${esc(a.course_name)} &mdash; ${esc(a.name)}</span>
+                <span class="assignment-due">${formatDue(a.due_at)}</span>
+                ${statusHTML("overdue")}
             </div>`;
         }
         html += `</div></div>`;
@@ -382,7 +428,10 @@ function toggleCollapsible(el) {
 
 function countStatuses(assignments) {
     const c = {};
-    for (const a of assignments) c[a.status] = (c[a.status] || 0) + 1;
+    for (const a of assignments) {
+        const s = effectiveStatus(a);
+        c[s] = (c[s] || 0) + 1;
+    }
     return c;
 }
 
@@ -392,6 +441,7 @@ function summaryHTML(counts) {
     if (counts.graded) parts.push(`<span class="status status-graded">${counts.graded} graded</span>`);
     if (counts.late) parts.push(`<span class="status status-late">${counts.late} late</span>`);
     if (counts.missing) parts.push(`<span class="status status-missing">${counts.missing} missing</span>`);
+    if (counts.overdue) parts.push(`<span class="status status-overdue">${counts.overdue} overdue</span>`);
     if (counts.unsubmitted) parts.push(`<span class="status status-unsubmitted">${counts.unsubmitted} pending</span>`);
     return parts.length ? `<span class="summary-counts">${parts.join(' ')}</span>` : '';
 }
@@ -468,7 +518,7 @@ function renderByMember(area) {
                 html += `<div class="assignment-row">
                     <span class="assignment-name">${esc(a.name)}</span>
                     <span class="assignment-due">${formatDue(a.due_at)}</span>
-                    ${statusHTML(a.status)}
+                    ${statusHTML(effectiveStatus(a))}
                     ${verificationHTML(a, member)}
                 </div>`;
             }

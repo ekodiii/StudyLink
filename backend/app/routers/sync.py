@@ -94,8 +94,8 @@ async def sync_data(
 
         synced_courses += 1
 
-        # Create visibility entries for any groups missing them
-        if user_group_ids:
+        # Create visibility entries for any groups missing them (skip hidden courses)
+        if user_group_ids and not course.hidden:
             groups_needing_decision = []
             for gid in user_group_ids:
                 # Check if visibility entry already exists

@@ -705,26 +705,28 @@ async function loadVisibility() {
         courseHiddenMap.set(c.id, c.hidden);
     }
 
-    // Group settings by course
+    // Group settings by course (skip hidden courses — those are managed in Courses tab)
     const courseMap = new Map();
     for (const item of settings) {
+        if (courseHiddenMap.get(item.course_id)) continue;
         if (!courseMap.has(item.course_id)) {
-            courseMap.set(item.course_id, { name: item.course_name, groups: [], hidden: courseHiddenMap.get(item.course_id) || false });
+            courseMap.set(item.course_id, { name: item.course_name, groups: [] });
         }
         courseMap.get(item.course_id).groups.push(item);
     }
 
-    // Add courses that have no visibility settings yet (no groups)
+    // Add non-hidden courses that have no visibility settings yet (no groups)
     for (const c of courses) {
+        if (c.hidden) continue;
         if (!courseMap.has(c.id)) {
-            courseMap.set(c.id, { name: c.name, groups: [], hidden: c.hidden });
+            courseMap.set(c.id, { name: c.name, groups: [] });
         }
     }
 
     // Merge pending into course map
     for (const course of pending) {
         if (!courseMap.has(course.course_id)) {
-            courseMap.set(course.course_id, { name: course.course_name, groups: [], pending: [], hidden: courseHiddenMap.get(course.course_id) || false });
+            courseMap.set(course.course_id, { name: course.course_name, groups: [], pending: [] });
         }
         const entry = courseMap.get(course.course_id);
         if (!entry.pending) entry.pending = [];
@@ -754,14 +756,12 @@ async function loadVisibility() {
         const sharedCount = data.groups.filter(g => g.visible).length;
         const totalGroups = data.groups.length + (data.pending ? data.pending.length : 0);
         const pendingCount = data.pending ? data.pending.length : 0;
-        const hiddenLabel = data.hidden ? ' · <span style="color:var(--red)">Hidden</span>' : '';
         let meta = totalGroups > 0
             ? `Shared with ${sharedCount}/${totalGroups} group${totalGroups !== 1 ? 's' : ''}`
             : 'No groups yet';
         if (pendingCount > 0) meta += ` · <span style="color:var(--accent)">${pendingCount} pending</span>`;
-        meta += hiddenLabel;
 
-        html += `<div class="vis-course-card" style="${data.hidden ? 'opacity:0.5' : ''}" onclick="openVisOverlay('${courseId}')">
+        html += `<div class="vis-course-card" onclick="openVisOverlay('${courseId}')">
             <div class="vis-course-name">${esc(data.name)}</div>
             <div class="vis-course-meta">${meta}</div>
         </div>`;

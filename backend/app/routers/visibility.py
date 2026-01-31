@@ -31,7 +31,7 @@ async def get_pending(user: User = Depends(get_current_user), db: AsyncSession =
         select(PendingVisibilityPrompt, Course, Group)
         .join(Course, PendingVisibilityPrompt.course_id == Course.id)
         .join(Group, PendingVisibilityPrompt.group_id == Group.id)
-        .where(PendingVisibilityPrompt.user_id == user.id)
+        .where(PendingVisibilityPrompt.user_id == user.id, Course.hidden == False)
     )
     rows = result.all()
 

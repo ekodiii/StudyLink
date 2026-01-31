@@ -159,7 +159,9 @@ async function showMain() {
 function switchTab(tab) {
     document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
     document.getElementById("tab-groups").classList.toggle("hidden", tab !== "groups");
+    document.getElementById("tab-courses").classList.toggle("hidden", tab !== "courses");
     document.getElementById("tab-visibility").classList.toggle("hidden", tab !== "visibility");
+    if (tab === "courses") loadCourses();
     if (tab === "visibility") loadVisibility();
 }
 
@@ -256,14 +258,14 @@ async function showGroupDetail(groupId) {
     // Assignment view toggle (visibility + leader control)
     const assignBtn = document.querySelector('.view-toggle button:last-child');
     const leaderToggleEl = document.getElementById("leader-assignment-toggle");
+    const viewToggle = document.querySelector('.view-toggle');
     if (group.assignment_view_enabled) {
-        assignBtn.classList.remove("hidden");
+        viewToggle.classList.remove("hidden");
     } else {
-        assignBtn.classList.add("hidden");
+        viewToggle.classList.add("hidden");
         if (currentView === "assignment") {
             currentView = "member";
-            document.querySelectorAll(".view-toggle button").forEach(b => b.classList.remove("active"));
-            document.querySelector(".view-toggle button:first-child").classList.add("active");
+            renderProgress();
         }
     }
     if (isLeader) {
@@ -393,11 +395,11 @@ async function toggleAssignmentView(enabled) {
     });
     if (!resp.ok) return;
     currentGroup.assignment_view_enabled = enabled;
-    const assignBtn = document.querySelector('.view-toggle button:last-child');
+    const viewToggle = document.querySelector('.view-toggle');
     if (enabled) {
-        assignBtn.classList.remove("hidden");
+        viewToggle.classList.remove("hidden");
     } else {
-        assignBtn.classList.add("hidden");
+        viewToggle.classList.add("hidden");
         if (currentView === "assignment") {
             currentView = "member";
             document.querySelectorAll(".view-toggle button").forEach(b => b.classList.remove("active"));
@@ -809,21 +811,10 @@ function openVisOverlay(courseId) {
     overlay.id = "vis-overlay";
     overlay.className = "vis-overlay";
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-    const isHidden = data.hidden || false;
     overlay.innerHTML = `
         <div class="vis-panel">
             <h3>${esc(data.name)}</h3>
             <div class="vis-course-code">Choose which groups can see this course</div>
-            <div class="vis-group-row" style="border-bottom:2px solid var(--border);padding-bottom:12px;margin-bottom:4px">
-                <div>
-                    <span class="vis-group-name">Hide site-wide</span>
-                    <div style="font-size:11px;color:var(--text2)">Stops syncing this course entirely</div>
-                </div>
-                <label class="toggle">
-                    <input type="checkbox" ${isHidden ? 'checked' : ''} onchange="toggleCourseHidden('${courseId}',this)">
-                    <span class="slider"></span>
-                </label>
-            </div>
             ${groupsHTML}
             <div style="margin-top:16px;text-align:right">
                 <button class="btn btn-secondary btn-small" onclick="document.getElementById('vis-overlay').remove()">Done</button>
@@ -845,20 +836,6 @@ async function toggleVisFromOverlay(courseId, groupId, visible) {
     }
 }
 
-async function toggleCourseHidden(courseId, checkbox) {
-    const resp = await api(`/users/me/courses/${courseId}`, { method: "PATCH" });
-    if (!resp.ok) {
-        checkbox.checked = !checkbox.checked;
-        return;
-    }
-    const result = await resp.json();
-    // Update local data
-    const data = window._visibilityData.get(courseId);
-    if (data) data.hidden = result.hidden;
-    // Close overlay and reload list to reflect hidden state
-    document.getElementById("vis-overlay")?.remove();
-    await loadVisibility();
-}
 
 async function decideCourseOverlay(courseId, groupId, visible) {
     await api("/visibility/decide", {
@@ -869,6 +846,34 @@ async function decideCourseOverlay(courseId, groupId, visible) {
     document.getElementById("vis-overlay")?.remove();
     await loadVisibility();
     await loadPending();
+}
+
+// ── Courses (site-wide hide) ─────────────────────────────────────────────────
+
+async function loadCourses() {
+    const el = document.getElementById("courses-list");
+    el.innerHTML = '<div class="loading">Loading courses…</div>';
+    const resp = await api("/users/me/courses");
+    if (!resp.ok) { el.innerHTML = '<div class="empty">Could not load courses</div>'; return; }
+    const courses = await resp.json();
+    if (courses.length === 0) { el.innerHTML = '<div class="empty">No courses synced yet</div>'; return; }
+    el.innerHTML = courses.map(c => `
+        <div class="vis-row">
+            <div>
+                <div style="font-weight:600;font-size:14px">${esc(c.name)}</div>
+                <div style="color:var(--text2);font-size:12px">${esc(c.course_code || '')}</div>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" ${c.hidden ? 'checked' : ''} onchange="toggleCourseHiddenFromTab('${c.canvas_course_id}',this)">
+                <span class="slider"></span>
+            </label>
+        </div>
+    `).join("");
+}
+
+async function toggleCourseHiddenFromTab(courseId, checkbox) {
+    const resp = await api(`/users/me/courses/${courseId}`, { method: "PATCH" });
+    if (!resp.ok) { checkbox.checked = !checkbox.checked; return; }
 }
 
 // ── Settings ────────────────────────────────────────────────────────────────

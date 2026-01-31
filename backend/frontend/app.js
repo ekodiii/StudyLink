@@ -684,29 +684,44 @@ async function showPendingDecisions() {
 }
 
 async function loadVisibility() {
-    const [settingsResp, pendingResp] = await Promise.all([
+    const [settingsResp, pendingResp, coursesResp] = await Promise.all([
         api("/visibility/settings"),
         api("/visibility/pending"),
+        api("/users/me/courses"),
     ]);
     if (!settingsResp.ok) return;
 
     const settings = (await settingsResp.json()).settings;
     const pending = pendingResp.ok ? (await pendingResp.json()).pending : [];
+    const courses = coursesResp.ok ? await coursesResp.json() : [];
     const el = document.getElementById("visibility-list");
+
+    // Build course hidden lookup
+    const courseHiddenMap = new Map();
+    for (const c of courses) {
+        courseHiddenMap.set(c.id, c.hidden);
+    }
 
     // Group settings by course
     const courseMap = new Map();
     for (const item of settings) {
         if (!courseMap.has(item.course_id)) {
-            courseMap.set(item.course_id, { name: item.course_name, groups: [] });
+            courseMap.set(item.course_id, { name: item.course_name, groups: [], hidden: courseHiddenMap.get(item.course_id) || false });
         }
         courseMap.get(item.course_id).groups.push(item);
+    }
+
+    // Add courses that have no visibility settings yet (no groups)
+    for (const c of courses) {
+        if (!courseMap.has(c.id)) {
+            courseMap.set(c.id, { name: c.name, groups: [], hidden: c.hidden });
+        }
     }
 
     // Merge pending into course map
     for (const course of pending) {
         if (!courseMap.has(course.course_id)) {
-            courseMap.set(course.course_id, { name: course.course_name, groups: [], pending: [] });
+            courseMap.set(course.course_id, { name: course.course_name, groups: [], pending: [], hidden: courseHiddenMap.get(course.course_id) || false });
         }
         const entry = courseMap.get(course.course_id);
         if (!entry.pending) entry.pending = [];
@@ -736,10 +751,14 @@ async function loadVisibility() {
         const sharedCount = data.groups.filter(g => g.visible).length;
         const totalGroups = data.groups.length + (data.pending ? data.pending.length : 0);
         const pendingCount = data.pending ? data.pending.length : 0;
-        let meta = `Shared with ${sharedCount}/${totalGroups} group${totalGroups !== 1 ? 's' : ''}`;
+        const hiddenLabel = data.hidden ? ' · <span style="color:var(--red)">Hidden</span>' : '';
+        let meta = totalGroups > 0
+            ? `Shared with ${sharedCount}/${totalGroups} group${totalGroups !== 1 ? 's' : ''}`
+            : 'No groups yet';
         if (pendingCount > 0) meta += ` · <span style="color:var(--accent)">${pendingCount} pending</span>`;
+        meta += hiddenLabel;
 
-        html += `<div class="vis-course-card" onclick="openVisOverlay('${courseId}')">
+        html += `<div class="vis-course-card" style="${data.hidden ? 'opacity:0.5' : ''}" onclick="openVisOverlay('${courseId}')">
             <div class="vis-course-name">${esc(data.name)}</div>
             <div class="vis-course-meta">${meta}</div>
         </div>`;
@@ -790,10 +809,21 @@ function openVisOverlay(courseId) {
     overlay.id = "vis-overlay";
     overlay.className = "vis-overlay";
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    const isHidden = data.hidden || false;
     overlay.innerHTML = `
         <div class="vis-panel">
             <h3>${esc(data.name)}</h3>
             <div class="vis-course-code">Choose which groups can see this course</div>
+            <div class="vis-group-row" style="border-bottom:2px solid var(--border);padding-bottom:12px;margin-bottom:4px">
+                <div>
+                    <span class="vis-group-name">Hide site-wide</span>
+                    <div style="font-size:11px;color:var(--text2)">Stops syncing this course entirely</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" ${isHidden ? 'checked' : ''} onchange="toggleCourseHidden('${courseId}',this)">
+                    <span class="slider"></span>
+                </label>
+            </div>
             ${groupsHTML}
             <div style="margin-top:16px;text-align:right">
                 <button class="btn btn-secondary btn-small" onclick="document.getElementById('vis-overlay').remove()">Done</button>
@@ -813,6 +843,21 @@ async function toggleVisFromOverlay(courseId, groupId, visible) {
         const g = data.groups.find(g => g.group_id === groupId);
         if (g) g.visible = visible;
     }
+}
+
+async function toggleCourseHidden(courseId, checkbox) {
+    const resp = await api(`/users/me/courses/${courseId}`, { method: "PATCH" });
+    if (!resp.ok) {
+        checkbox.checked = !checkbox.checked;
+        return;
+    }
+    const result = await resp.json();
+    // Update local data
+    const data = window._visibilityData.get(courseId);
+    if (data) data.hidden = result.hidden;
+    // Close overlay and reload list to reflect hidden state
+    document.getElementById("vis-overlay")?.remove();
+    await loadVisibility();
 }
 
 async function decideCourseOverlay(courseId, groupId, visible) {

@@ -865,7 +865,7 @@ async function loadCourses() {
                 <div style="color:var(--text2);font-size:12px">${esc(c.course_code || '')}</div>
             </div>
             <label class="toggle">
-                <input type="checkbox" ${c.hidden ? 'checked' : ''} onchange="toggleCourseHiddenFromTab('${c.id}',this)">
+                <input type="checkbox" ${c.hidden ? '' : 'checked'} onchange="toggleCourseHiddenFromTab('${c.id}',this)">
                 <span class="slider"></span>
             </label>
         </div>

@@ -12,36 +12,11 @@ struct DashboardSection: View {
     let progress: GroupProgress?
 
     @State private var upcomingExpanded = false
-    @State private var overdueExpanded = false
     @State private var missingExpanded = false
-
-    var overdueAssignments: [DashboardAssignment] {
-        guard let progress = progress else { return [] }
-
-        var overdue: [DashboardAssignment] = []
-
-        for member in progress.members {
-            for course in member.courses {
-                for assignment in course.assignments {
-                    if assignment.effectiveStatus == .overdue {
-                        overdue.append(DashboardAssignment(
-                            name: assignment.name,
-                            dueAt: assignment.dueAt,
-                            status: .overdue,
-                            courseName: course.courseCode ?? course.name,
-                            memberUsername: member.username
-                        ))
-                    }
-                }
-            }
-        }
-
-        return overdue.sorted { ($0.dueAt ?? Date.distantPast) < ($1.dueAt ?? Date.distantPast) }
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if !dashboard.upcoming.isEmpty || !overdueAssignments.isEmpty || !dashboard.missing.isEmpty {
+            if !dashboard.upcoming.isEmpty || !dashboard.missing.isEmpty {
                 // Upcoming
                 if !dashboard.upcoming.isEmpty {
                     DashboardCard(
@@ -49,20 +24,7 @@ struct DashboardSection: View {
                         count: dashboard.upcoming.count,
                         isExpanded: $upcomingExpanded
                     ) {
-                        ForEach(dashboard.upcoming, id: \.name) { assignment in
-                            AssignmentRow(assignment: assignment)
-                        }
-                    }
-                }
-
-                // Overdue
-                if !overdueAssignments.isEmpty {
-                    DashboardCard(
-                        title: "⏳ Overdue",
-                        count: overdueAssignments.count,
-                        isExpanded: $overdueExpanded
-                    ) {
-                        ForEach(overdueAssignments, id: \.name) { assignment in
+                        ForEach(dashboard.upcoming) { assignment in
                             AssignmentRow(assignment: assignment)
                         }
                     }
@@ -75,7 +37,7 @@ struct DashboardSection: View {
                         count: dashboard.missing.count,
                         isExpanded: $missingExpanded
                     ) {
-                        ForEach(dashboard.missing, id: \.name) { assignment in
+                        ForEach(dashboard.missing) { assignment in
                             AssignmentRow(assignment: assignment)
                         }
                     }
@@ -171,7 +133,7 @@ struct AssignmentRow: View {
 
             Spacer()
 
-            StatusBadge(status: assignment.status)
+            StatusBadge(status: AssignmentStatus(from: assignment.status))
         }
         .padding(8)
         .background(Color("Surface2"))

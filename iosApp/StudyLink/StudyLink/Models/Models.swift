@@ -119,6 +119,10 @@ enum AssignmentStatus: String, Codable {
     case missing
     case unsubmitted
     case overdue
+
+    init(from string: String) {
+        self = AssignmentStatus(rawValue: string) ?? .unsubmitted
+    }
 }
 
 struct Assignment: Codable, Identifiable {

@@ -75,27 +75,25 @@ struct GroupDetail: Codable, Identifiable {
     let leader: GroupMember
     let members: [GroupMember]
     var assignmentViewEnabled: Bool
-    let createdAt: Date
 
     enum CodingKeys: String, CodingKey {
         case id, name
         case inviteCode = "invite_code"
         case leader, members
         case assignmentViewEnabled = "assignment_view_enabled"
-        case createdAt = "created_at"
     }
 }
 
 struct GroupMember: Codable, Identifiable {
     let id: String
-    let userId: String
     let username: String
+    let discriminator: String
+    let joinedAt: Date?
     let lastSyncedAt: Date?
 
     enum CodingKeys: String, CodingKey {
-        case id
-        case userId = "user_id"
-        case username
+        case id, username, discriminator
+        case joinedAt = "joined_at"
         case lastSyncedAt = "last_synced_at"
     }
 }
@@ -124,19 +122,20 @@ enum AssignmentStatus: String, Codable {
 }
 
 struct Assignment: Codable, Identifiable {
-    let id: String
+    var id: String { assignmentId }  // Use assignmentId as ID
     let assignmentId: String
     let name: String
     let dueAt: Date?
     var status: AssignmentStatus
+    let submittedAt: Date?
     let verification: Verification?
 
     enum CodingKeys: String, CodingKey {
-        case id
         case assignmentId = "assignment_id"
         case name
         case dueAt = "due_at"
         case status
+        case submittedAt = "submitted_at"
         case verification
     }
 
@@ -149,31 +148,35 @@ struct Assignment: Codable, Identifiable {
 }
 
 struct Course: Codable, Identifiable {
-    let id: String
+    var id: String { courseId }  // Use courseId as ID
+    let courseId: String
     let name: String
     let courseCode: String?
+    let institution: String?
     let assignments: [Assignment]
     var hidden: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case id, name
+        case courseId = "course_id"
+        case name
         case courseCode = "course_code"
+        case institution
         case assignments
         case hidden
     }
 }
 
 struct MemberProgress: Codable, Identifiable {
-    let id: String
+    var id: String { userId }  // Use userId as ID
     let userId: String
     let username: String
+    let discriminator: String
     let lastSyncedAt: Date?
     let courses: [Course]
 
     enum CodingKeys: String, CodingKey {
-        case id
         case userId = "user_id"
-        case username
+        case username, discriminator
         case lastSyncedAt = "last_synced_at"
         case courses
     }
@@ -185,19 +188,24 @@ struct GroupProgress: Codable {
 
 // MARK: - Dashboard Models
 
-struct DashboardAssignment: Codable {
+struct DashboardAssignment: Codable, Identifiable {
+    var id: String { assignmentId }  // Use assignmentId as ID
+    let assignmentId: String
     let name: String
     let dueAt: Date?
-    let status: AssignmentStatus
+    let status: String  // Backend uses string
     let courseName: String
     let memberUsername: String
+    let memberUserId: String
 
     enum CodingKeys: String, CodingKey {
+        case assignmentId = "assignment_id"
         case name
         case dueAt = "due_at"
         case status
         case courseName = "course_name"
         case memberUsername = "member_username"
+        case memberUserId = "member_user_id"
     }
 }
 
@@ -215,12 +223,12 @@ enum VerificationStatus: String, Codable {
 
 struct Verification: Codable, Identifiable {
     let id: String
-    let status: VerificationStatus
+    let status: String  // Backend uses string, not enum
     let requesterId: String
     let requesterUsername: String
     let verifierId: String
     let verifierUsername: String
-    let verificationWord: String?
+    let verificationWord: String
 
     enum CodingKeys: String, CodingKey {
         case id, status
@@ -255,7 +263,7 @@ struct VerifyRequest: Codable {
 // MARK: - Visibility Models
 
 struct VisibilitySetting: Codable, Identifiable {
-    let id: String
+    var id: String { "\(courseId)_\(groupId)" }  // Computed ID for SwiftUI
     let courseId: String
     let courseName: String
     let groupId: String
@@ -263,7 +271,6 @@ struct VisibilitySetting: Codable, Identifiable {
     var visible: Bool
 
     enum CodingKeys: String, CodingKey {
-        case id
         case courseId = "course_id"
         case courseName = "course_name"
         case groupId = "group_id"

@@ -107,8 +107,10 @@ async def auth_google(req: GoogleAuthRequest, db: AsyncSession = Depends(get_db)
             google_sub = payload.get("sub")
             if not google_sub:
                 raise ValueError("Missing sub")
-            # Verify audience matches our client
-            if settings.google_client_id and payload.get("aud") != settings.google_client_id:
+            # Verify audience matches our web or iOS client
+            ios_client_id = "374855005519-b4vrdccg2ts9i5po31r3inotu6ij8i7k.apps.googleusercontent.com"
+            aud = payload.get("aud")
+            if settings.google_client_id and aud not in [settings.google_client_id, ios_client_id]:
                 raise ValueError("Audience mismatch")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid Google ID token")

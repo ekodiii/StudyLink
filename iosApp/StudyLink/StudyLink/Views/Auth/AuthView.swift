@@ -62,10 +62,17 @@ struct AuthView: View {
                     .disabled(isLoading)
 
                     if let error = errorMessage {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 40)
+                        ScrollView {
+                            Text(error)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundColor(.red)
+                                .multilineTextAlignment(.leading)
+                                .padding()
+                                .background(Color.black.opacity(0.8))
+                                .cornerRadius(8)
+                        }
+                        .frame(maxHeight: 200)
+                        .padding(.horizontal, 40)
                     }
                 }
 
@@ -88,12 +95,14 @@ struct AuthView: View {
         errorMessage = nil
 
         defer {
-            isLoading = false  // Always reset loading state
+            isLoading = false
         }
 
         do {
             // Get ID token from Google
             let idToken = try await GoogleSignInHelper.shared.signIn()
+
+            print("📱 Got ID token: \(idToken.prefix(20))...")
 
             // Authenticate with backend
             let user = try await APIService.shared.authenticateWithGoogle(idToken: idToken)
@@ -101,6 +110,25 @@ struct AuthView: View {
             // Update app state
             appState.currentUser = user
             appState.isAuthenticated = true
+        } catch let error as NSError {
+            // Detailed error logging for debugging
+            let errorDetails = """
+            Error: \(error.localizedDescription)
+            Domain: \(error.domain)
+            Code: \(error.code)
+            User Info: \(error.userInfo)
+            """
+
+            print("🔴 Auth Error:\n\(errorDetails)")
+
+            // Show detailed error on screen
+            errorMessage = """
+            \(error.localizedDescription)
+
+            Code: \(error.code)
+            Domain: \(error.domain)
+            Details: \(error.userInfo)
+            """
         } catch {
             errorMessage = error.localizedDescription
         }

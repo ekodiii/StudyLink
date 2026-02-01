@@ -25,7 +25,7 @@ struct ProgressSection: View {
                 Spacer()
 
                 // Leader toggle for assignment view
-                if group.leader.userId == currentUserId {
+                if group.leader.id == currentUserId {
                     HStack(spacing: 8) {
                         Text("Assignment view")
                             .font(.caption)

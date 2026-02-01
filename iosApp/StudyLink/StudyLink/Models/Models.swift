@@ -11,15 +11,13 @@ import Foundation
 
 struct User: Codable, Identifiable {
     let id: String
-    let email: String
     var username: String
     let discriminator: String
-    let picture: String?
-    let lastSyncedAt: Date?
+    let isNewUser: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case id, email, username, discriminator, picture
-        case lastSyncedAt = "last_synced_at"
+        case id, username, discriminator
+        case isNewUser = "is_new_user"
     }
 }
 

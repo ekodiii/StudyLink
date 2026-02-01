@@ -21,6 +21,7 @@ class GroupDetailViewModel: ObservableObject {
     func loadGroup(groupId: String) async {
         self.groupId = groupId
         isLoading = true
+        errorMessage = nil
 
         do {
             async let groupTask = api.getGroupDetail(groupId: groupId)
@@ -30,6 +31,21 @@ class GroupDetailViewModel: ObservableObject {
             group = try await groupTask
             progress = try await progressTask
             dashboard = try await dashboardTask
+        } catch let error as NSError {
+            let errorDetails = """
+            Error: \(error.localizedDescription)
+            Domain: \(error.domain)
+            Code: \(error.code)
+            User Info: \(error.userInfo)
+            """
+            print("🔴 GroupDetail Load Error:\n\(errorDetails)")
+
+            errorMessage = """
+            \(error.localizedDescription)
+
+            Code: \(error.code)
+            Domain: \(error.domain)
+            """
         } catch {
             errorMessage = error.localizedDescription
         }

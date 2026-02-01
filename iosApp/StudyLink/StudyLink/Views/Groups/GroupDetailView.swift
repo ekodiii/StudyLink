@@ -55,6 +55,41 @@ struct GroupDetailView: View {
                         ProgressView()
                             .frame(maxWidth: .infinity)
                             .padding(.top, 100)
+                    } else if let error = viewModel.errorMessage {
+                        VStack(spacing: 16) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 48))
+                                .foregroundColor(.red)
+
+                            Text("Failed to load group")
+                                .font(.headline)
+                                .foregroundColor(.white)
+
+                            ScrollView {
+                                Text(error)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundColor(Color("Text2"))
+                                    .multilineTextAlignment(.leading)
+                                    .padding()
+                                    .background(Color.black.opacity(0.8))
+                                    .cornerRadius(8)
+                            }
+                            .frame(maxHeight: 200)
+                            .padding(.horizontal)
+
+                            Button("Retry") {
+                                Task {
+                                    await viewModel.loadGroup(groupId: groupId)
+                                }
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(Color("Accent"))
+                            .cornerRadius(8)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 100)
                     }
                 }
                 .padding()

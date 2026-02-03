@@ -23,6 +23,7 @@
             <h1>Study<span>Link</span></h1>
             <div class="header-right">
                 <span class="user-tag" id="user-tag"></span>
+                <button class="btn btn-secondary btn-small" onclick="showHelp()">Help</button>
                 <button class="btn btn-secondary btn-small" onclick="showSettings()">Settings</button>
                 <button class="btn btn-secondary btn-small" onclick="doLogout()">Sign Out</button>
             </div>
@@ -152,6 +153,60 @@
         <div class="modal-actions">
             <button class="btn btn-secondary btn-small" onclick="hide('modal-join')">Cancel</button>
             <button class="btn btn-primary btn-small" onclick="joinGroup()">Join</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-help" class="modal-overlay hidden" onclick="closeModal(event,'modal-help')">
+    <div class="modal modal-help">
+        <h3>How to Use StudyLink</h3>
+        <div class="help-content">
+            <div class="help-step">
+                <div class="help-step-number">1</div>
+                <div>
+                    <h4>Install the Chrome Extension</h4>
+                    <p>Install the <a href="https://chromewebstore.google.com/detail/StudyLink%20—%20Canvas%20Sync/cpcojnmmbkfgkoagljkopddbklohlkfk" target="_blank" rel="noopener">StudyLink Chrome Extension</a> to sync your Canvas assignments.</p>
+                    <p class="help-note"><strong>Important:</strong> After installing, reload your Canvas page for the extension to start syncing.</p>
+                </div>
+            </div>
+            <div class="help-step">
+                <div class="help-step-number">2</div>
+                <div>
+                    <h4>Sign in to the Extension</h4>
+                    <p>Click the StudyLink extension icon and sign in with Google or Apple using the same account you used here.</p>
+                </div>
+            </div>
+            <div class="help-step">
+                <div class="help-step-number">3</div>
+                <div>
+                    <h4>Sync Your Assignments</h4>
+                    <p>Visit any Canvas course page and the extension will automatically sync your assignments. You can also click "Sync Now" in the extension popup.</p>
+                </div>
+            </div>
+            <div class="help-step">
+                <div class="help-step-number">4</div>
+                <div>
+                    <h4>Create or Join a Group</h4>
+                    <p>Create a study group and share the invite code, or join an existing group with a code from your classmates.</p>
+                </div>
+            </div>
+            <div class="help-step">
+                <div class="help-step-number">5</div>
+                <div>
+                    <h4>Track Progress Together</h4>
+                    <p>See at a glance which assignments you and your study group have completed. Assignments automatically update when you submit them in Canvas.</p>
+                </div>
+            </div>
+            <div class="help-step">
+                <div class="help-step-number">6</div>
+                <div>
+                    <h4>Manage Course Visibility</h4>
+                    <p>Use the <strong>Courses</strong> tab to hide courses site-wide, or the <strong>Visibility</strong> tab to control which courses each group can see.</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-primary btn-small" onclick="hide('modal-help')">Got it!</button>
         </div>
     </div>
 </div>

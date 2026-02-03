@@ -119,6 +119,13 @@ async function handleGoogleAuth(response) {
     localStorage.setItem("token", token);
     localStorage.setItem("refreshToken", refreshToken);
     currentUser = data.user;
+
+    // Show help modal for new users
+    if (data.user.is_new_user) {
+        localStorage.setItem("hasSeenHelp", "true");
+        showHelp();
+    }
+
     showMain();
 }
 
@@ -878,6 +885,10 @@ async function toggleCourseHiddenFromTab(courseId, checkbox) {
 }
 
 // ── Settings ────────────────────────────────────────────────────────────────
+
+function showHelp() {
+    show("modal-help");
+}
 
 function showSettings() {
     hide("screen-main");

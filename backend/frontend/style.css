@@ -146,6 +146,68 @@ header h1 span { color: var(--accent); }
 .modal input:focus { border-color: var(--accent); }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
+/* Help modal */
+.modal-help {
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+.help-content {
+    margin-bottom: 20px;
+}
+.help-step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+}
+.help-step:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+.help-step-number {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+}
+.help-step h4 {
+    margin-bottom: 8px;
+    font-size: 15px;
+    color: var(--text);
+}
+.help-step p {
+    color: var(--text2);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+.help-step p:last-child {
+    margin-bottom: 0;
+}
+.help-note {
+    background: var(--surface2);
+    padding: 8px 12px;
+    border-radius: 6px;
+    border-left: 3px solid var(--accent);
+}
+.help-content a {
+    color: var(--accent);
+    text-decoration: none;
+}
+.help-content a:hover {
+    text-decoration: underline;
+}
+
 /* Group detail */
 .detail-back {
     color: var(--text2);

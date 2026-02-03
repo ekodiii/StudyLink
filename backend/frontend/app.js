@@ -120,13 +120,13 @@ async function handleGoogleAuth(response) {
     localStorage.setItem("refreshToken", refreshToken);
     currentUser = data.user;
 
-    // Show help modal for new users
+    await showMain();
+
+    // Show help modal for new users after main screen loads
     if (data.user.is_new_user) {
         localStorage.setItem("hasSeenHelp", "true");
         showHelp();
     }
-
-    showMain();
 }
 
 function doLogout() {

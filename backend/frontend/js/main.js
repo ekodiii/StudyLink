@@ -66,7 +66,16 @@ function switchTab(tab) {
     document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
     ["tab-groups", "tab-courses"].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.classList.toggle("hidden", id !== "tab-" + tab);
+        if (!el) return;
+        const isTarget = id === "tab-" + tab;
+        if (isTarget) {
+            el.classList.remove("hidden");
+            el.classList.remove("fade-in");
+            el.offsetHeight;
+            el.classList.add("fade-in");
+        } else {
+            el.classList.add("hidden");
+        }
     });
     if (tab === "courses") loadCourses();
 }

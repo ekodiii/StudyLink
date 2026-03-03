@@ -17,6 +17,11 @@ async function renderGroupDetail(groupId) {
     show("screen-detail");
     document.getElementById("user-tag-detail").textContent = `${currentUser.username}#${currentUser.discriminator}`;
 
+    // Clear stale content from previous group immediately so it doesn't flash
+    document.getElementById("detail-name").textContent = "";
+    document.getElementById("progress-area").innerHTML = "";
+    document.getElementById("dashboard-area").innerHTML = "";
+
     const resp = await api(`/groups/${groupId}`);
     if (!resp.ok) { await showMain(); return; }
     const group = await resp.json();
@@ -170,6 +175,9 @@ function renderDashboard(data) {
     }
     html += `</div>`;
     area.innerHTML = html;
+    area.classList.remove("fade-in");
+    area.offsetHeight;
+    area.classList.add("fade-in");
 }
 
 function setView(view, btn) {
@@ -204,13 +212,14 @@ function renderProgress() {
     const area = document.getElementById("progress-area");
     if (!currentProgress || !currentProgress.members.length) {
         area.innerHTML = `<div class="empty">No progress data yet. Members need to sync via the browser extension.</div>`;
-        return;
-    }
-    if (currentView === "member") {
+    } else if (currentView === "member") {
         renderByMember(area);
     } else {
         renderByAssignment(area);
     }
+    area.classList.remove("fade-in");
+    area.offsetHeight;
+    area.classList.add("fade-in");
 }
 
 function verificationHTML(a, member) {

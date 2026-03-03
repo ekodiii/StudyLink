@@ -1,4 +1,10 @@
-function show(id) { document.getElementById(id).classList.remove("hidden"); }
+function show(id) {
+    const el = document.getElementById(id);
+    el.classList.remove("hidden");
+    el.classList.remove("fade-in");
+    el.offsetHeight; // force reflow so animation replays
+    el.classList.add("fade-in");
+}
 function hide(id) { document.getElementById(id).classList.add("hidden"); }
 
 function closeModal(e, id) {

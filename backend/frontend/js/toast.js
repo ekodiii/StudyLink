@@ -14,7 +14,8 @@ function showToast(message, type = "info", duration = 4000) {
     `;
 
     _toastContainer.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add("toast-visible"));
+    toast.offsetHeight; // force reflow so initial transform is painted
+    toast.classList.add("toast-visible");
 
     setTimeout(() => {
         toast.classList.remove("toast-visible");

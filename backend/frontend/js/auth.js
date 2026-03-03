@@ -21,7 +21,7 @@ async function handleGoogleAuth(response) {
         body: JSON.stringify({ id_token: response.credential }),
     });
     if (!resp.ok) {
-        alert("Sign-in failed. Please try again.");
+        showToast("Sign-in failed. Please try again.", "error");
         return;
     }
     const data = await resp.json();
@@ -34,8 +34,7 @@ async function handleGoogleAuth(response) {
     await showMain();
 
     if (data.user.is_new_user) {
-        localStorage.setItem("hasSeenHelp", "true");
-        showHelp();
+        showWelcomeUsername();
     }
 }
 
@@ -56,4 +55,30 @@ function doLogout() {
         google.accounts.id.disableAutoSelect();
     }
     initGoogleSignIn();
+}
+
+function showWelcomeUsername() {
+    show("modal-username");
+    const input = document.getElementById("welcome-username");
+    input.value = currentUser.username;
+    input.select();
+    input.focus();
+}
+
+async function saveWelcomeUsername() {
+    const name = document.getElementById("welcome-username").value.trim();
+    if (!name) { showToast("Please enter a username", "info"); return; }
+    const resp = await api("/users/me", { method: "PATCH", body: JSON.stringify({ username: name }) });
+    if (!resp.ok) { showToast("Failed to save username", "error"); return; }
+    currentUser = await resp.json();
+    document.getElementById("user-tag").textContent = `${currentUser.username}#${currentUser.discriminator}`;
+    hide("modal-username");
+    showToast("Welcome to StudyLink!", "success");
+    showOnboarding();
+}
+
+function skipWelcomeUsername() {
+    hide("modal-username");
+    showToast("You can change your username in Settings anytime", "info");
+    showOnboarding();
 }

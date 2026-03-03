@@ -34,7 +34,6 @@
         <div class="tabs">
             <div class="tab active" data-tab="groups" onclick="switchTab('groups')">Groups</div>
             <div class="tab" data-tab="courses" onclick="switchTab('courses')">Courses</div>
-            <div class="tab" data-tab="visibility" onclick="switchTab('visibility')">Visibility</div>
         </div>
 
         <div id="tab-groups">
@@ -53,20 +52,11 @@
                 <h2>Your Courses</h2>
             </div>
             <p style="color:var(--text2);font-size:13px;margin-bottom:16px">
-                Toggle courses on or off site-wide. Hidden courses stop syncing and won't appear in any group.
+                Toggle courses on/off, or expand to manage which groups can see each course.
             </p>
             <div id="courses-list"></div>
         </div>
 
-        <div id="tab-visibility" class="hidden">
-            <div class="section-header">
-                <h2>Course Visibility</h2>
-            </div>
-            <p style="color:var(--text2);font-size:13px;margin-bottom:16px">
-                Control which courses each group can see. Click a course to manage per-group sharing.
-            </p>
-            <div id="visibility-list"></div>
-        </div>
     </div>
 
     <!-- Group Detail Screen -->
@@ -157,68 +147,70 @@
     </div>
 </div>
 
-<div id="modal-help" class="modal-overlay hidden" onclick="closeModal(event,'modal-help')">
-    <div class="modal modal-help">
-        <h3>How to Use StudyLink</h3>
-        <div class="help-content">
-            <div class="help-step">
-                <div class="help-step-number">1</div>
-                <div>
-                    <h4>Install the Chrome Extension</h4>
-                    <p>Install the <a href="https://chromewebstore.google.com/detail/StudyLink%20—%20Canvas%20Sync/cpcojnmmbkfgkoagljkopddbklohlkfk" target="_blank" rel="noopener">StudyLink Chrome Extension</a> to sync your Canvas assignments.</p>
-                    <p class="help-note"><strong>Important:</strong> After installing, reload your Canvas page for the extension to start syncing.</p>
-                </div>
-            </div>
-            <div class="help-step">
-                <div class="help-step-number">2</div>
-                <div>
-                    <h4>Sign in to the Extension</h4>
-                    <p>Click the StudyLink extension icon and sign in with Google or Apple using the same account you used here.</p>
-                </div>
-            </div>
-            <div class="help-step">
-                <div class="help-step-number">3</div>
-                <div>
-                    <h4>Sync Your Assignments</h4>
-                    <p>Visit any Canvas course page and the extension will automatically sync your assignments. You can also click "Sync Now" in the extension popup.</p>
-                </div>
-            </div>
-            <div class="help-step">
-                <div class="help-step-number">4</div>
-                <div>
-                    <h4>Create or Join a Group</h4>
-                    <p>Create a study group and share the invite code, or join an existing group with a code from your classmates.</p>
-                </div>
-            </div>
-            <div class="help-step">
-                <div class="help-step-number">5</div>
-                <div>
-                    <h4>Track Progress Together</h4>
-                    <p>See at a glance which assignments you and your study group have completed. Assignments automatically update when you submit them in Canvas.</p>
-                </div>
-            </div>
-            <div class="help-step">
-                <div class="help-step-number">6</div>
-                <div>
-                    <h4>Manage Course Visibility</h4>
-                    <p>Use the <strong>Courses</strong> tab to hide courses site-wide, or the <strong>Visibility</strong> tab to control which courses each group can see.</p>
-                </div>
-            </div>
-        </div>
+<div id="modal-username" class="modal-overlay hidden" onclick="event.stopPropagation()">
+    <div class="modal">
+        <h3>Welcome to StudyLink!</h3>
+        <p style="color:var(--text2);font-size:14px;margin-bottom:16px;line-height:1.5">
+            Choose a username for your study groups. You can change this later in Settings.
+        </p>
+        <input id="welcome-username" placeholder="Choose a username" maxlength="32"
+               onkeydown="if(event.key==='Enter')saveWelcomeUsername()">
         <div class="modal-actions">
-            <button class="btn btn-primary btn-small" onclick="hide('modal-help')">Got it!</button>
+            <button class="btn btn-secondary btn-small" onclick="skipWelcomeUsername()">Skip</button>
+            <button class="btn btn-primary btn-small" onclick="saveWelcomeUsername()">Save</button>
         </div>
     </div>
 </div>
 
-<script src="/static/js/utils.js?v=4"></script>
-<script src="/static/js/api.js?v=4"></script>
-<script src="/static/js/auth.js?v=4"></script>
-<script src="/static/js/groups.js?v=4"></script>
-<script src="/static/js/detail.js?v=4"></script>
-<script src="/static/js/verification.js?v=4"></script>
-<script src="/static/js/visibility.js?v=4"></script>
-<script src="/static/js/settings.js?v=4"></script>
-<script src="/static/js/main.js?v=4"></script>
+<div id="modal-help" class="modal-overlay hidden" onclick="closeModal(event,'modal-help')">
+    <div class="modal" style="max-width:500px">
+        <h3>Quick Reference</h3>
+        <div class="help-grid">
+            <div class="help-item">
+                <div class="help-item-icon">&#128268;</div>
+                <div>
+                    <h4>Chrome Extension</h4>
+                    <p>Syncs your Canvas assignments automatically. <a href="https://chromewebstore.google.com/detail/StudyLink%20—%20Canvas%20Sync/cpcojnmmbkfgkoagljkopddbklohlkfk" target="_blank" rel="noopener">Install here</a>. Sign in with the same account, then visit any Canvas page.</p>
+                </div>
+            </div>
+            <div class="help-item">
+                <div class="help-item-icon">&#128101;</div>
+                <div>
+                    <h4>Groups</h4>
+                    <p>Create or join a group with an invite code. See everyone's assignment progress at a glance.</p>
+                </div>
+            </div>
+            <div class="help-item">
+                <div class="help-item-icon">&#128218;</div>
+                <div>
+                    <h4>Courses</h4>
+                    <p>Toggle courses on/off site-wide. Expand a course to manage which groups can see it.</p>
+                </div>
+            </div>
+            <div class="help-item">
+                <div class="help-item-icon">&#9989;</div>
+                <div>
+                    <h4>Verification</h4>
+                    <p>Ask a friend to verify your work. They type a secret word to confirm completion.</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions" style="margin-top:20px">
+            <button class="btn btn-primary btn-small" onclick="hide('modal-help')">Got it</button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/utils.js?v=5"></script>
+<script src="/static/js/toast.js?v=5"></script>
+<script src="/static/js/api.js?v=5"></script>
+<script src="/static/js/auth.js?v=5"></script>
+<script src="/static/js/groups.js?v=5"></script>
+<script src="/static/js/detail.js?v=5"></script>
+<script src="/static/js/verification.js?v=5"></script>
+<script src="/static/js/visibility.js?v=5"></script>
+<script src="/static/js/settings.js?v=5"></script>
+<script src="/static/js/onboarding.js?v=5"></script>
+<script src="/static/js/main.js?v=5"></script>
 </body>
 </html>

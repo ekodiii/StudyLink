@@ -22,12 +22,12 @@ async function saveUsername() {
     if (!name) return;
     const oldDisc = currentUser.discriminator;
     const resp = await api("/users/me", { method: "PATCH", body: JSON.stringify({ username: name }) });
-    if (!resp.ok) { alert("Failed to update username"); return; }
+    if (!resp.ok) { showToast("Failed to update username", "error"); return; }
     currentUser = await resp.json();
     document.getElementById("settings-disc").textContent = `Discriminator: #${currentUser.discriminator}`;
     if (currentUser.discriminator !== oldDisc) {
-        alert(`Username updated! Your discriminator changed to #${currentUser.discriminator} because someone already has that username with your old discriminator.`);
+        showToast(`Username updated! Your tag is now #${currentUser.discriminator}`, "success");
     } else {
-        alert("Username updated!");
+        showToast("Username updated!", "success");
     }
 }

@@ -51,6 +51,9 @@ async function renderMain() {
     document.getElementById("user-tag").textContent = `${currentUser.username}#${currentUser.discriminator}`;
     await loadGroups();
     await loadPending();
+    if (!localStorage.getItem("onboardingDismissed")) {
+        await showOnboarding();
+    }
 }
 
 async function showMain() {
@@ -61,12 +64,11 @@ async function showMain() {
 
 function switchTab(tab) {
     document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
-    ["tab-groups", "tab-courses", "tab-visibility"].forEach(id => {
+    ["tab-groups", "tab-courses"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.toggle("hidden", id !== "tab-" + tab);
     });
     if (tab === "courses") loadCourses();
-    if (tab === "visibility") loadVisibility();
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────

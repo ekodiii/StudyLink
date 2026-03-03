@@ -368,13 +368,13 @@ async function regenerateInvite() {
 }
 
 async function leaveGroup() {
-    if (!confirm("Leave this group?")) return;
+    if (!await showConfirm("Leave this group?")) return;
     await api(`/groups/${currentGroupId}/leave`, { method: "DELETE" });
     showMain();
 }
 
 async function deleteGroup() {
-    if (!confirm("Delete this group? This cannot be undone.")) return;
+    if (!await showConfirm("Delete this group? This cannot be undone.")) return;
     await api(`/groups/${currentGroupId}`, { method: "DELETE" });
     showMain();
 }

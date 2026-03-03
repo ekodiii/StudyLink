@@ -36,7 +36,7 @@ async function createGroup() {
     const name = document.getElementById("create-name").value.trim();
     if (!name) return;
     const resp = await api("/groups", { method: "POST", body: JSON.stringify({ name }) });
-    if (!resp.ok) { alert("Failed to create group"); return; }
+    if (!resp.ok) { showToast("Failed to create group", "error"); return; }
     hide("modal-create");
     const group = await resp.json();
     showGroupDetail(group.id);
@@ -46,9 +46,9 @@ async function joinGroup() {
     const code = document.getElementById("join-code").value.trim().toUpperCase();
     if (!code) return;
     const resp = await api("/groups/join", { method: "POST", body: JSON.stringify({ invite_code: code }) });
-    if (resp.status === 404) { alert("Invalid invite code"); return; }
-    if (resp.status === 409) { alert("Already a member"); return; }
-    if (!resp.ok) { alert("Failed to join group"); return; }
+    if (resp.status === 404) { showToast("Invalid invite code", "error"); return; }
+    if (resp.status === 409) { showToast("You're already a member of this group", "info"); return; }
+    if (!resp.ok) { showToast("Failed to join group", "error"); return; }
     hide("modal-join");
     const group = await resp.json();
     showGroupDetail(group.id);

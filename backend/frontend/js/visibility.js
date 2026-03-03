@@ -108,8 +108,8 @@ async function loadCourses() {
                         <div class="course-card-name">${esc(c.name)}</div>
                         <div class="course-card-meta">${c.course_code ? esc(c.course_code) + (meta ? ' &middot; ' : '') : ''}${meta}</div>
                     </div>
-                    <div class="course-card-controls" onclick="event.stopPropagation()">
-                        <label class="toggle">
+                    <div class="course-card-controls">
+                        <label class="toggle" onclick="event.stopPropagation()">
                             <input type="checkbox" ${c.hidden ? '' : 'checked'} onchange="toggleCourseHidden('${c.id}',this)">
                             <span class="slider"></span>
                         </label>

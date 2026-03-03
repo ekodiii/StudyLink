@@ -116,7 +116,7 @@ async function loadCourses() {
                         ${hasGroups ? '<span class="chevron" style="margin-left:8px;font-size:10px">&#9660;</span>' : ''}
                     </div>
                 </div>
-                ${hasGroups ? `<div class="collapsible-content collapsed" style="padding:8px 0 0 0">${groupsHTML}</div>` : ''}
+                ${hasGroups ? `<div class="collapsible-content collapsed"><div class="course-card-groups">${groupsHTML}</div></div>` : ''}
             </div>
         `;
     }).join("");

@@ -10,7 +10,7 @@ browserAPI.alarms.create("studylink-sync", { periodInMinutes: 360 });
 browserAPI.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name !== "studylink-sync") return;
     // Find any Canvas tab and trigger sync
-    browserAPI.tabs.query({ url: "https://*.instructure.com/*" }, (tabs) => {
+    browserAPI.tabs.query({ url: ["https://*.instructure.com/*", "https://canvas.vt.edu/*", "https://canvas.virginia.edu/*"] }, (tabs) => {
         if (tabs.length > 0) {
             lastSyncTime = 0; // bypass debounce for alarm
             browserAPI.tabs.sendMessage(tabs[0].id, { type: "DO_SYNC" }, () => {
@@ -30,7 +30,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "MANUAL_SYNC") {
         lastSyncTime = 0; // reset debounce
         browserAPI.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs[0]?.url?.includes(".instructure.com")) {
+            if (tabs[0]?.url?.match(/\.instructure\.com|canvas\.vt\.edu|canvas\.virginia\.edu/)) {
                 browserAPI.tabs.sendMessage(tabs[0].id, { type: "DO_SYNC" }, sendResponse);
             } else {
                 sendResponse({ error: "No Canvas tab active" });

@@ -4,7 +4,8 @@
     console.log("[StudyLink] Content script loaded on:", window.location.hostname);
 
     // Only run on Canvas pages
-    if (!window.location.hostname.includes("instructure.com")) {
+    const CANVAS_DOMAINS = ["instructure.com", "canvas.vt.edu", "canvas.virginia.edu"];
+    if (!CANVAS_DOMAINS.some(d => window.location.hostname.includes(d))) {
         console.log("[StudyLink] Not a Canvas page, exiting");
         return;
     }

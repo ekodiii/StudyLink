@@ -97,7 +97,9 @@ async function renderAccounts() {
         const item = document.createElement("div");
         item.className = "account-item";
 
-        const shortDomain = acct.domain.replace(".instructure.com", "");
+        const shortDomain = acct.domain
+            .replace(".instructure.com", "")
+            .replace("canvas.", "");
         const statusClass = acct.status === "allowed" ? "allowed" : "denied";
         const statusLabel = acct.status === "allowed" ? "Allowed" : "Denied";
         const toggleLabel = acct.status === "allowed" ? "Deny" : "Allow";

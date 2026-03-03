@@ -295,6 +295,7 @@ header h1 span { color: var(--accent); }
 .status-missing { background: rgba(225,112,85,0.15); color: var(--red); }
 .status-overdue { background: rgba(200,50,50,0.2); color: #e05555; }
 .status-unsubmitted { background: rgba(145,150,168,0.1); color: var(--text2); }
+.status-no_submission { background: rgba(145,150,168,0.1); color: var(--text2); }
 
 /* Visibility */
 .vis-row {

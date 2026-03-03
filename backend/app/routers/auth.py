@@ -4,10 +4,12 @@ import urllib.parse
 
 import httpx
 import jwt as pyjwt
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from ..core.config import settings
 from ..core.database import get_db
@@ -18,6 +20,7 @@ from ..core.security import (
     decode_token,
     get_current_user as get_current_user_dep,
 )
+from ..core.apple_auth import verify_apple_token
 from ..models.user import User
 from ..schemas.auth import (
     AppleAuthRequest,
@@ -29,6 +32,7 @@ from ..schemas.auth import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 def _random_discriminator() -> str:
@@ -70,15 +74,14 @@ async def _get_or_create_user(
 
 
 @router.post("/apple", response_model=AuthResponse)
-async def auth_apple(req: AppleAuthRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def auth_apple(req: AppleAuthRequest, request: Request, db: AsyncSession = Depends(get_db)):
     try:
-        # Decode Apple identity token (unverified for structure; production should verify with Apple's public keys)
-        payload = pyjwt.decode(req.identity_token, options={"verify_signature": False})
+        # Verify Apple identity token with signature verification
+        payload = await verify_apple_token(req.identity_token, settings.apple_client_id)
         apple_sub = payload.get("sub")
-        if not apple_sub:
-            raise ValueError("Missing sub")
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid Apple identity token")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     user, is_new = await _get_or_create_user(db, apple_id=apple_sub)
     return AuthResponse(
@@ -94,7 +97,8 @@ async def auth_apple(req: AppleAuthRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/google", response_model=AuthResponse)
-async def auth_google(req: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def auth_google(req: GoogleAuthRequest, request: Request, db: AsyncSession = Depends(get_db)):
     try:
         # Verify Google ID token
         async with httpx.AsyncClient() as client:
@@ -129,7 +133,8 @@ async def auth_google(req: GoogleAuthRequest, db: AsyncSession = Depends(get_db)
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(req: RefreshRequest):
+@limiter.limit("20/minute")
+async def refresh_token(req: RefreshRequest, request: Request):
     payload = decode_token(req.refresh_token)
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=400, detail="Invalid refresh token")
@@ -268,12 +273,11 @@ async def apple_extension_callback(
         return HTMLResponse("<h1>Authentication failed</h1><p>No identity token received.</p>", status_code=400)
 
     try:
-        payload = pyjwt.decode(id_token, options={"verify_signature": False})
+        # Verify Apple identity token with signature verification
+        payload = await verify_apple_token(id_token, settings.apple_client_id)
         apple_sub = payload.get("sub")
-        if not apple_sub:
-            raise ValueError("Missing sub")
-    except Exception:
-        return HTMLResponse("<h1>Authentication failed</h1><p>Invalid Apple token.</p>", status_code=400)
+    except ValueError as e:
+        return HTMLResponse(f"<h1>Authentication failed</h1><p>{str(e)}</p>", status_code=400)
 
     user, _ = await _get_or_create_user(db, apple_id=apple_sub)
     ext_token = create_extension_token(str(user.id))

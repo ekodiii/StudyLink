@@ -153,12 +153,26 @@ async def sync_data(
             # Upsert submission
             if assignment_data.submission:
                 sub_result = await db.execute(
-                    select(Submission).where(Submission.assignment_id == assignment.id)
+                    select(Submission).where(
+                        Submission.assignment_id == assignment.id,
+                        Submission.user_id == user.id
+                    )
                 )
                 submission = sub_result.scalar_one_or_none()
                 status = SubmissionStatus(assignment_data.submission.status)
+                # If Canvas returns unsubmitted but the due date has already passed,
+                # treat it as no_submission (not overdue) — Canvas not marking it
+                # missing means it either didn't require a submission or was handled
+                # outside Canvas (reading, external tool, on paper, etc.)
+                if (
+                    status == SubmissionStatus.unsubmitted
+                    and assignment.due_at is not None
+                    and assignment.due_at < now
+                ):
+                    status = SubmissionStatus.no_submission
                 if not submission:
                     submission = Submission(
+                        user_id=user.id,
                         assignment_id=assignment.id,
                         status=status,
                         submitted_at=assignment_data.submission.submitted_at,

@@ -32,6 +32,7 @@ function statusHTML(s) {
         missing: "Missing",
         unsubmitted: "Not yet",
         overdue: "Overdue",
+        no_submission: "No submission",
     };
     return `<span class="status status-${s}">${labels[s] || s}</span>`;
 }
@@ -65,6 +66,7 @@ function summaryHTML(counts) {
     if (counts.missing) parts.push(`<span class="status status-missing">${counts.missing} missing</span>`);
     if (counts.overdue) parts.push(`<span class="status status-overdue">${counts.overdue} overdue</span>`);
     if (counts.unsubmitted) parts.push(`<span class="status status-unsubmitted">${counts.unsubmitted} pending</span>`);
+    if (counts.no_submission) parts.push(`<span class="status status-no_submission">${counts.no_submission} no submission</span>`);
     return parts.length ? `<span class="summary-counts">${parts.join(' ')}</span>` : '';
 }
 

@@ -14,13 +14,15 @@ class SubmissionStatus(str, enum.Enum):
     late = "late"
     missing = "missing"
     graded = "graded"
+    no_submission = "no_submission"
 
 
 class Submission(Base):
     __tablename__ = "submissions"
-    __table_args__ = (UniqueConstraint("assignment_id"),)
+    __table_args__ = (UniqueConstraint("user_id", "assignment_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     assignment_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("assignments.id", ondelete="CASCADE"))
     status: Mapped[SubmissionStatus] = mapped_column(Enum(SubmissionStatus, name="submission_status", native_enum=False), default=SubmissionStatus.unsubmitted)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
